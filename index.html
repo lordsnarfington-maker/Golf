@@ -206,8 +206,8 @@ select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid 
      holes[i].og[k]: {p,pen,ts} extra stats for guest k (strokes stay in holes[i].o[k])
    Old rounds without `card` read their card from the built-in course.
    ========================================================= */
-const APP_VERSION="2.3";
-const ME="Matt";
+const APP_VERSION="2.4";
+let ME="Matt"; /* the phone owner's name; set from bl_me below */
 
 /* Built-in courses. Brae Loch tee keys stay "orange/yellow/blue" so old rounds keep working;
    only the labels changed to the course's current tee colors. */
@@ -300,6 +300,17 @@ function teeFor(c){
 }
 
 /* first run on v2: build guest profiles from names already used in past rounds */
+/* Player 1's name: saved in bl_me. Phones that already have rounds keep the name from those rounds. */
+ME=LS.get("bl_me",null);
+if(!ME){const lr=liveRounds(); ME=lr.length?((lr[0].players||[])[0]||"Matt"):""; if(ME) LS.set("bl_me",ME)}
+function setMyName(v){
+  v=(v||"").trim().slice(0,24);
+  if(!v){toast("Type your name");return false}
+  if(allGuestNames().some(n=>n.toLowerCase()===v.toLowerCase())){toast("A playing partner already has that name");return false}
+  const old=ME; ME=v; LS.set("bl_me",v);
+  if(old&&old!==v){Object.values(S.rounds).forEach(r=>{if(r&&r.players&&r.players[0]===old){r.players[0]=v;touch(r)}}); saveLocal()}
+  return true;
+}
 if(!Array.isArray(S.guests)){
   const seen=[];liveRounds().sort((a,b)=>b.date.localeCompare(a.date)).forEach(r=>(r.players||[]).slice(1).forEach(p=>{if(p&&!seen.includes(p))seen.push(p)}));
   S.guests=seen;saveGuests();
@@ -640,6 +651,9 @@ function backupNag(){
 
 function homeView(a){
   let h=header("Golf","Your golf card");
+  if(!ME) return h+`<div class="section"><div class="panel stack"><div><h2>Welcome!</h2><div class="note">This app keeps score and tracks your stats. Everything saves on this phone only.</div></div>
+    <label class="stack" style="gap:6px"><strong>What's your name?</strong><input type="text" id="mename" maxlength="24" autocomplete="off" placeholder="Your name"></label>
+    <button class="btn primary" data-act="setme">Let's play</button></div></div>`;
   if(a){
     const c=cardOf(a), n=played(a), tp=myTotal(a)-parThru(a), nh=nHoles(a);
     const next=a.holes.findIndex(x=>x.s==null);
@@ -852,6 +866,7 @@ function historyView(){
   if(uc.length){
     h+=`<div class="section"><div class="eyebrow">Your saved courses</div><div class="rlist">${uc.map(x=>`<div class="ritem" style="cursor:default"><div><strong>${esc(x.name)}</strong></div><div></div><small>${esc(x.place||"")}${x.place?" · ":""}${x.par.length} holes · par ${x.par.reduce((a,b)=>a+b,0)}</small></div>`).join("")}</div></div>`;
   }
+  h+=`<div class="section"><div class="eyebrow">Your name</div><div class="panel stack"><div class="row" style="flex-wrap:nowrap"><input type="text" id="mename" value="${esc(ME)}" maxlength="24" autocomplete="off"><button class="btn" data-act="setme">Save</button></div><div class="note">You're always Player 1. Changing your name updates all your rounds.</div></div></div>`;
   h+=`<div class="section"><div class="eyebrow">Backup</div><div class="panel stack">
     <div class="note">Rounds are saved only on this phone. Copy the backup text and paste it into a note, email or a Claude chat for a safe copy.${S.backupAt?" Last backup: "+new Date(S.backupAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+".":""}</div>
     <div class="row"><button class="btn" data-act="copy">Copy backup</button><button class="btn ghost" data-act="showrestore">Restore from backup</button></div>
@@ -874,6 +889,7 @@ document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el) return;
   const act=el.dataset.act, a=active();
   if(act==="go"){S.view=el.dataset.v; S.viewId=null; S.confirm=null; if(S.view==="hole"&&a){const n=a.holes.findIndex(x=>x.s==null); S.hole=n<0?Math.min(S.hole,nHoles(a)-1):n} render(); scrollTo(0,0)}
+  else if(act==="setme"){const first=!ME; if(setMyName(document.getElementById("mename").value)){render();toast(first?"Welcome, "+ME:"Name saved")}}
   else if(act==="pick"){S.pick=el.dataset.v;LS.set("bl_pick",S.pick);render()}
   else if(act==="tees"){S.tees=el.dataset.v;LS.set("bl_tees",S.tees);S.teePick[S.pick]=el.dataset.v;LS.set("bl_teepick",S.teePick);render()}
   else if(act==="bholes"){S.blankHoles=+el.dataset.v;render()}
