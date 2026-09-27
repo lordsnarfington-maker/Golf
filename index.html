@@ -156,7 +156,32 @@ table.sc{border-collapse:collapse;font-family:var(--font-d);font-variant-numeric
 .kv b{font-family:var(--font-d);font-size:17px}
 
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;z-index:5}
-.bar nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:100%;max-width:560px}
+.bar nav{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;width:100%;max-width:560px}
+/* stats */
+.hb{display:grid;grid-template-columns:92px 1fr 56px;align-items:center;gap:8px;font-size:14px}
+.hb .tr{height:14px;background:var(--surface-2);border-radius:4px;position:relative;overflow:hidden}
+.hb .fl{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;background:var(--accent)}
+.hb .fl.warn{background:var(--warn)}
+.hb .fl.dim{background:var(--muted);opacity:.55}
+.hb .v{text-align:right;font-family:var(--font-d);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.stk{display:flex;height:22px;border-radius:6px;overflow:hidden;gap:2px;background:var(--surface)}
+.stk span{display:block;height:100%}
+.lg{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:13px;color:var(--muted)}
+.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.lg b{color:var(--ink);font-family:var(--font-d);font-size:15px}
+.ins{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.trend{width:100%;height:170px;display:block}
+.trend .ax{stroke:var(--line);stroke-width:1}
+.trend .ln{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.trend .dt{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.trend text{fill:var(--muted);font-size:11px;font-family:var(--font-b)}
+table.cmp{width:100%;border-collapse:collapse;font-size:14px}
+.cmp th,.cmp td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+.cmp th:first-child,.cmp td:first-child{text-align:left;color:var(--muted);font-weight:500}
+.cmp th{font-family:var(--font-d);font-size:16px}
+.cmp td b{font-family:var(--font-d);font-size:17px}
+.cmp tr:last-child td{border-bottom:0}
+select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;width:100%}
 .bar button{border:0;background:transparent;border-radius:10px;padding:8px 4px;font-family:var(--font-d);font-size:16px;font-weight:600;letter-spacing:.04em;color:var(--muted);min-height:48px}
 .bar button[aria-current="page"]{color:var(--ink);background:var(--surface-2)}
 .bar button:disabled{opacity:.35}
@@ -181,7 +206,7 @@ table.sc{border-collapse:collapse;font-family:var(--font-d);font-variant-numeric
      holes[i].og[k]: {p,pen,ts} extra stats for guest k (strokes stay in holes[i].o[k])
    Old rounds without `card` read their card from the built-in course.
    ========================================================= */
-const APP_VERSION="2.2";
+const APP_VERSION="2.3";
 const ME="Matt";
 
 /* Built-in courses. Brae Loch tee keys stay "orange/yellow/blue" so old rounds keep working;
@@ -257,7 +282,8 @@ const S={
   courses:LS.get("bl_courses",{}), guests:LS.get("bl_guests",null),
   tees:LS.get("bl_tees","orange"), pick:LS.get("bl_pick","brae-loch"), teePick:LS.get("bl_teepick",{}), backupAt:LS.get("bl_backup_at",0),
   view:"home", hole:0, viewId:null, newPlayers:[], blankHoles:18, blankName:"",
-  more:{}, confirm:null, filter:"all"
+  more:{}, confirm:null, filter:"all",
+  sFilter:"all", sRange:"all", guestName:null, gprof:LS.get("bl_gprof",{})
 };
 function saveLocal(){LS.set("bl_rounds",S.rounds);LS.set("bl_pending",[...S.pending])}
 function saveCourses(){LS.set("bl_courses",S.courses)}
@@ -384,6 +410,207 @@ function guestStats(name){
 }
 function unbacked(){return doneRounds().filter(r=>(r.updatedAt||0)>S.backupAt).length}
 
+/* ================= Stats engine (works for any course, blank cards and 9-hole rounds) ================= */
+function allGuestNames(){const s=[...S.guests]; liveRounds().forEach(r=>(r.players||[]).slice(1).forEach(p=>{if(p&&!s.includes(p))s.push(p)})); return s}
+/* one row per played hole for a player: k=-1 is Matt, k>=0 is guest k */
+function holeRowsFor(r,k){
+  const c=cardOf(r);
+  return r.holes.map((h,i)=>{
+    const par=parOf(r,i), hcp=c.hcp?c.hcp[i]:null;
+    if(k<0) return {par,hcp,s:h.s,p:h.p,pen:h.pen||0,ts:h.ts};
+    const g=gxr(h,k); return {par,hcp,s:(h.o||[])[k],p:g.p,pen:g.pen||0,ts:g.ts};
+  }).filter(x=>x.s!=null);
+}
+function statRounds(filter,range){
+  let rs=doneRounds(filter).sort((a,b)=>a.date.localeCompare(b.date));
+  if(range&&range!=="all") rs=rs.slice(-(+range));
+  return rs;
+}
+function statsFor(rs,who){ /* who: null = Matt, or a guest name */
+  const rows=[], rounds=[];
+  [...rs].sort((a,b)=>a.date.localeCompare(b.date)).forEach(r=>{
+    const k=who==null?-1:(r.players||[]).indexOf(who)-1; if(who!=null&&k<0) return;
+    const hr=holeRowsFor(r,k); if(!hr.length) return; rows.push(...hr);
+    if(hr.length===nHoles(r)){const tot=hr.reduce((a,x)=>a+x.s,0), par=hr.reduce((a,x)=>a+x.par,0); rounds.push({r,tot,par,n:hr.length,tp18:(tot-par)*18/hr.length})}
+  });
+  const H=rows.length; if(!H) return null;
+  const over=a=>a.length?a.reduce((s,x)=>s+(x.s-x.par),0)/a.length:null;
+  const by=f=>rows.filter(f);
+  const par={}; [3,4,5].forEach(p=>{const a=by(x=>x.par===p); par[p]={n:a.length,over:over(a),per18:a.length?a.reduce((s,x)=>s+(x.s-x.par),0)/H*18:0}});
+  const diff={}; [["Hardest (hcp 1-6)",1,6],["Middle (hcp 7-12)",7,12],["Easiest (hcp 13-18)",13,18]].forEach(([l,a,b])=>{const z=by(x=>x.hcp&&x.hcp>=a&&x.hcp<=b); if(z.length) diff[l]={n:z.length,over:over(z)}});
+  const pr=by(x=>x.p!=null), putts=pr.length?pr.reduce((s,x)=>s+x.p,0)/pr.length:null;
+  const three=pr.filter(x=>x.p>=3).length, one=pr.filter(x=>x.p<=1).length;
+  const tee4=by(x=>x.par>3&&x.ts), tee3=by(x=>x.par===3&&x.ts);
+  const cnt=(a,keys)=>Object.fromEntries(keys.map(k=>[k,a.filter(x=>x.ts===k).length]));
+  const fwHit=by(x=>x.par>3&&x.ts==="F"), fwMiss=by(x=>x.par>3&&x.ts&&x.ts!=="F");
+  const types={eagle:0,birdie:0,par:0,bogey:0,double:0,triple:0};
+  rows.forEach(x=>{const d=x.s-x.par; types[d<=-2?"eagle":d===-1?"birdie":d===0?"par":d===1?"bogey":d===2?"double":"triple"]++});
+  const full18=rounds.filter(x=>x.n===18);
+  return {holes:H, rounds, full18, over:over(rows), tp18:over(rows)*18, par, diff,
+    putts, puttHoles:pr.length, putts18:putts!=null?putts*18:null, three18:pr.length?three/pr.length*18:null, onePct:pr.length?one/pr.length:null,
+    pen18:rows.reduce((s,x)=>s+x.pen,0)/H*18,
+    tee4:{n:tee4.length,c:cnt(tee4,["F","L","R","S","T"])}, tee3:{n:tee3.length,c:cnt(tee3,["G","L","R","S","T"])},
+    fwHitOver:over(fwHit), fwMissOver:over(fwMiss), types,
+    best:full18.length?Math.min(...full18.map(x=>x.tot)):null, avg18:full18.length?full18.reduce((s,x)=>s+x.tot,0)/full18.length:null};
+}
+function insights(st){
+  const out=[]; if(!st||st.holes<9) return out;
+  const pts=[3,4,5].filter(p=>st.par[p].n>=3).map(p=>[p,st.par[p].over]);
+  if(pts.length>=2){const s=[...pts].sort((a,b)=>a[1]-b[1]); out.push(`Your best holes are par ${s[0][0]}s (${toParF(s[0][1])} each). Par ${s[s.length-1][0]}s cost the most (${toParF(s[s.length-1][1])} each).`)}
+  if(st.tee3.n>=3){const [k,v]=Object.entries(st.tee3.c).filter(e=>e[0]!=="G").sort((a,b)=>b[1]-a[1])[0]; const nm={L:"left",R:"right",S:"short",T:"long"}[k]; if(v/st.tee3.n>=0.4) out.push(`On par 3s you miss ${nm} ${Math.round(v/st.tee3.n*100)}% of the time${k==="S"?", so try one more club":""}.`)}
+  if(st.tee4.n>=4){const hit=st.tee4.c.F/st.tee4.n; const miss=Object.entries(st.tee4.c).filter(e=>e[0]!=="F").sort((a,b)=>b[1]-a[1])[0]; const nm={L:"left",R:"right",S:"short",T:"in trouble"}[miss[0]];
+    out.push(`You hit ${Math.round(hit*100)}% of fairways${miss[1]?`, and your most common miss is ${nm}`:""}.`);
+    if(st.fwHitOver!=null&&st.fwMissOver!=null&&st.fwMissOver-st.fwHitOver>=0.3) out.push(`Missing the fairway costs you about ${(st.fwMissOver-st.fwHitOver).toFixed(1)} strokes a hole.`)}
+  if(st.three18!=null&&st.three18>=1) out.push(`About ${st.three18.toFixed(1)} three-putts a round. Lag putting is an easy place to save strokes.`);
+  if(st.pen18>=1) out.push(`Penalties add about ${st.pen18.toFixed(1)} strokes a round.`);
+  return out.slice(0,5);
+}
+const toParF=v=>v==null?"–":(v>=0.05?"+":v<=-0.05?"−":"")+Math.abs(v).toFixed(1).replace(/^0\.0$/,"0");
+function hbar(label,val,max,txt,cls){const w=max>0?Math.max(2,Math.min(100,Math.abs(val)/max*100)):0;return `<div class="hb"><span>${label}</span><div class="tr"><div class="fl ${cls||""}" style="width:${w}%"></div></div><span class="v">${txt}</span></div>`}
+function trendSVG(rounds){
+  if(rounds.length<2) return "";
+  const W=340,Hh=150,pl=30,pr=10,pt=12,pb=24; const ys=rounds.map(x=>x.tp18);
+  let lo=Math.floor(Math.min(...ys)/5)*5, hi=Math.ceil(Math.max(...ys)/5)*5; if(hi-lo<10){hi=lo+10}
+  const X=i=>pl+(rounds.length===1?0:i*(W-pl-pr)/(rounds.length-1)), Y=v=>pt+(hi-v)*(Hh-pt-pb)/(hi-lo);
+  const mid=Math.round((lo+hi)/10)*5; const grid=[lo,mid,hi].map(v=>`<line class="ax" x1="${pl}" x2="${W-pr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text x="${pl-5}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end">${v>0?"+"+v:v}</text>`).join("");
+  const d=rounds.map((x,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(x.tp18).toFixed(1)}`).join(" ");
+  const dots=rounds.map((x,i)=>`<circle class="dt" cx="${X(i).toFixed(1)}" cy="${Y(x.tp18).toFixed(1)}" r="4.5"><title>${esc(courseName(x.r))} ${fmtDate(x.r.date)}: ${x.tot} (${toPar(x.tot-x.par)}${x.n===9?", 9 holes":""})</title></circle>`).join("");
+  const dl=i=>new Date(rounds[i].r.date).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+  return `<svg class="trend" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Score to par over time">${grid}<path class="ln" d="${d}"/>${dots}<text x="${pl}" y="${Hh-6}">${dl(0)}</text><text x="${W-pr}" y="${Hh-6}" text-anchor="end">${dl(rounds.length-1)}</text></svg>`;
+}
+const TYPECOL={eagle:"#0F5A2C",birdie:"var(--good)",par:"#A7B3A9",bogey:"#E6B47A",double:"var(--warn)",triple:"var(--bad)"};
+const TYPELBL={eagle:"Eagle+",birdie:"Birdie",par:"Par",bogey:"Bogey",double:"Double",triple:"Triple+"};
+function typesBlock(t,H){
+  const ks=Object.keys(TYPELBL).filter(k=>t[k]);
+  return `<div class="stk" role="img" aria-label="Score types">${ks.map(k=>`<span style="width:${t[k]/H*100}%;background:${TYPECOL[k]}" title="${TYPELBL[k]} ${Math.round(t[k]/H*100)}%"></span>`).join("")}</div>
+    <div class="lg">${ks.map(k=>`<span><i style="background:${TYPECOL[k]}"></i>${TYPELBL[k]} <b>${Math.round(t[k]/H*100)}%</b></span>`).join("")}</div>`;
+}
+function teeBlock(tee,labels){
+  if(!tee.n) return `<div class="note">No tee shots logged yet.</div>`;
+  const max=Math.max(...Object.values(tee.c)); const miss=Object.entries(tee.c).filter(e=>e[0]!=="F"&&e[0]!=="G").sort((a,b)=>b[1]-a[1])[0];
+  return labels.map(([k,l])=>hbar(l,tee.c[k],max,Math.round(tee.c[k]/tee.n*100)+"%",k==="F"||k==="G"?"":(miss&&k===miss[0]&&miss[1]?"warn":"dim"))).join("");
+}
+function statsBody(st,who){
+  if(!st) return `<div class="panel muted">No finished rounds${who?" with "+esc(who):""} for this filter yet.</div>`;
+  const overs=[3,4,5].filter(p=>st.par[p].n).map(p=>st.par[p].over), dovs=Object.values(st.diff).map(d=>d.over);
+  const maxOver=Math.max(0.5,...overs.map(Math.abs),...dovs.map(Math.abs))*1.1, worstP=Math.max(...overs), worstD=dovs.length?Math.max(...dovs):null;
+  let h=`<div class="stats">
+    <div class="stat"><b>${st.rounds.length}</b><span>Rounds</span></div>
+    <div class="stat"><b>${toParF(st.tp18)}</b><span>Avg to par / 18</span></div>
+    <div class="stat"><b>${st.best??"—"}</b><span>Best 18</span></div></div>`;
+  const tr=trendSVG(st.rounds);
+  if(tr) h+=`<div class="section" style="margin-top:14px"><div class="eyebrow">Score to par, round by round</div><div class="panel" style="padding:10px 8px">${tr}</div><div class="note">9-hole rounds are doubled so they compare with 18. Tap a dot for details.</div></div>`;
+  h+=`<div class="section"><div class="eyebrow">Where the strokes go · average over par per hole</div><div class="panel stack">
+    ${[3,4,5].filter(p=>st.par[p].n).map(p=>hbar(`Par ${p}s`,st.par[p].over,maxOver,toParF(st.par[p].over),overs.length>1&&st.par[p].over===worstP?"warn":"")).join("")}
+    ${Object.keys(st.diff).length?`<div class="note" style="margin-top:4px">By hole difficulty</div>${Object.entries(st.diff).map(([l,d])=>hbar(l.split(" ")[0],d.over,maxOver,toParF(d.over),dovs.length>1&&d.over===worstD?"warn":"")).join("")}`:""}
+  </div></div>`;
+  h+=`<div class="section"><div class="eyebrow">Putting and penalties · per 18 holes</div><div class="stats">
+    <div class="stat"><b>${st.putts18!=null?st.putts18.toFixed(1):"—"}</b><span>Putts</span></div>
+    <div class="stat"><b>${st.three18!=null?st.three18.toFixed(1):"—"}</b><span>3-putts</span></div>
+    <div class="stat"><b>${st.pen18.toFixed(1)}</b><span>Penalties</span></div></div>
+    ${st.puttHoles&&st.puttHoles<st.holes?`<div class="note">Putts logged on ${st.puttHoles} of ${st.holes} holes.</div>`:""}</div>`;
+  h+=`<div class="section"><div class="eyebrow">Tee shots · par 4s and 5s</div><div class="panel stack">${teeBlock(st.tee4,TS)}</div></div>`;
+  h+=`<div class="section"><div class="eyebrow">Tee shots · par 3s</div><div class="panel stack">${teeBlock(st.tee3,TS3)}</div></div>`;
+  h+=`<div class="section"><div class="eyebrow">Score types</div><div class="panel stack">${typesBlock(st.types,st.holes)}</div></div>`;
+  const ins=who?[]:insights(st);
+  if(ins.length) h+=`<div class="section"><div class="eyebrow">Strengths and weaknesses</div><div class="panel"><ul class="ins">${ins.map(x=>`<li>${x}</li>`).join("")}</ul></div></div>`;
+  return h;
+}
+function statFilters(){
+  const keys={}; doneRounds().forEach(r=>{keys[courseKey(r)]=courseName(r)});
+  if(S.sFilter!=="all"&&!keys[S.sFilter]) S.sFilter="all";
+  return `<div class="row">${[["all","All courses"],...Object.entries(keys)].map(([k,n])=>`<button class="chip" data-act="sfilter" data-v="${esc(k)}" aria-pressed="${S.sFilter===k}">${esc(n)}</button>`).join("")}</div>
+    <div class="row">${[["all","All time"],["10","Last 10"],["5","Last 5"]].map(([k,n])=>`<button class="chip" data-act="srange" data-v="${k}" aria-pressed="${S.sRange===k}">${n}</button>`).join("")}</div>`;
+}
+function statsView(){
+  const rs=statRounds(S.sFilter,S.sRange), st=statsFor(rs,null), hc=handicapHistory();
+  let h=header("Stats","Your golf card",hc.hi!=null?`Handicap index ${hc.hi.toFixed(1)}*`:"");
+  h+=`<div class="section">${statFilters()}</div><div class="section">${statsBody(st,null)}</div>`;
+  const people=allGuestNames().map(guestStats).filter(g=>g.rounds);
+  h+=`<div class="section"><div class="spread"><div class="eyebrow">You vs your playing partners</div><button class="chip" data-act="go" data-v="players">Manage</button></div>${people.length?partnerList(people):`<div class="panel muted">Add a player when you tee off and they'll show up here.</div>`}</div>`;
+  if(hc.hi!=null) h+=`<div class="note">*Unofficial, worked out the World Handicap System way.</div>`;
+  return h;
+}
+/* rounds where both Matt and the guest finished every hole */
+function h2h(name){
+  const out=[]; doneRounds().sort((a,b)=>a.date.localeCompare(b.date)).forEach(r=>{
+    const k=(r.players||[]).indexOf(name)-1; if(k<0) return;
+    if(!complete(r)||oPlayed(r,k)!==nHoles(r)) return;
+    out.push({r,me:myTotal(r),them:oTotal(r,k),par:parTotal(r),n:nHoles(r)});
+  }); return out;
+}
+function courseHcpFor(hi,r){const c=cardOf(r); if(hi==null||!c.rating||!c.slope||nHoles(r)!==18) return null; return Math.round(hi*c.slope/113+(c.rating-parTotal(r)))}
+function partnerList(people){
+  return `<div class="rlist">${people.map(g=>{const m=h2h(g.name);const w=m.filter(x=>x.me<x.them).length,l=m.filter(x=>x.me>x.them).length,t=m.length-w-l;
+    return `<button class="ritem" data-act="guest" data-n="${esc(g.name)}"><div><strong>${esc(g.name)}</strong>${S.guests.includes(g.name)?"":` <span class="muted">(hidden)</span>`}</div><div class="score">${g.avg!=null?g.avg.toFixed(1):"–"}</div>
+    <small>${plural(g.rounds,"round")} together${m.length?` · you ${w}-${l}${t?"-"+t:""}`:""}${g.best!=null?" · their best "+g.best:""}</small></button>`}).join("")}</div>
+    <div class="note">Big number is their average 18-hole score. Record is your wins-losses-ties on total strokes.</div>`;
+}
+function playersView(){
+  let h=header("Players","Playing partners");
+  const names=allGuestNames();
+  h+=`<div class="section">${names.length?`<div class="rlist">${names.map(n=>{const g=guestStats(n);return `<button class="ritem" data-act="guest" data-n="${esc(n)}"><div><strong>${esc(n)}</strong>${S.guests.includes(n)?"":` <span class="muted">(hidden)</span>`}</div><div class="score">${g.avg!=null?g.avg.toFixed(1):"–"}</div><small>${plural(g.rounds,"round")}${S.gprof[n]&&S.gprof[n].hcp!=null?" · handicap "+S.gprof[n].hcp:""}</small></button>`}).join("")}</div>`:`<div class="panel muted">No playing partners yet.</div>`}
+    <div class="note">Tap a player to see their stats, rename them, merge duplicates or set a handicap. Hidden players keep all their rounds; they just don't show on the tee-off screen.</div></div>`;
+  return h;
+}
+function playerView(name){
+  if(!name) return playersView();
+  const st=statsFor(doneRounds(),name), mine=statsFor(doneRounds().filter(r=>(r.players||[]).indexOf(name)>0),null), m=h2h(name);
+  const gh=S.gprof[name]&&S.gprof[name].hcp!=null?S.gprof[name].hcp:null, myHi=handicapHistory().hi;
+  let h=`<div class="row" style="margin-bottom:10px"><button class="chip" data-act="gback">‹ All players</button></div>`+header(name,"Playing partner",gh!=null?"Handicap index "+gh:"");
+  if(m.length){
+    const w=m.filter(x=>x.me<x.them).length,l=m.filter(x=>x.me>x.them).length,t=m.length-w-l;
+    const d=m.reduce((s,x)=>s+(x.me-x.them)*18/x.n,0)/m.length;
+    const net=m.map(x=>{const a=courseHcpFor(myHi,x.r),b=courseHcpFor(gh,x.r);return a!=null&&b!=null?{me:x.me-a,them:x.them-b}:null}).filter(Boolean);
+    const nw=net.filter(x=>x.me<x.them).length,nl=net.filter(x=>x.me>x.them).length;
+    h+=`<div class="section"><div class="eyebrow">Head to head</div><div class="stats">
+      <div class="stat"><b>${w}-${l}${t?"-"+t:""}</b><span>Your record</span></div>
+      <div class="stat"><b>${d>0?"+":d<0?"−":""}${Math.abs(d).toFixed(1)}</b><span>You vs ${esc(name)} / 18</span></div>
+      <div class="stat"><b>${net.length?`${nw}-${nl}`:"—"}</b><span>Net record</span></div></div>
+      <div class="note">${d>0?`${esc(name)} beats you by about ${d.toFixed(1)} strokes a round.`:d<0?`You beat ${esc(name)} by about ${Math.abs(d).toFixed(1)} strokes a round.`:"Dead even."}${net.length?" Net uses today's handicaps on rated tees.":gh==null?` Add ${esc(name)}'s handicap below to see net scores.`:myHi==null?" Net scores show once you have a handicap (3 full rounds on rated tees).":""}</div></div>`;
+  }
+  const row=(l,a,b)=>`<tr><td>${l}</td><td><b>${a}</b></td><td><b>${b}</b></td></tr>`;
+  if(st&&mine){
+    h+=`<div class="section"><div class="eyebrow">Side by side · rounds together</div><div class="panel" style="padding:6px 12px"><table class="cmp">
+      <tr><th></th><th>${ME}</th><th>${esc(name)}</th></tr>
+      ${row("Avg to par / 18",toParF(mine.tp18),toParF(st.tp18))}
+      ${row("Best 18",mine.best??"—",st.best??"—")}
+      ${[3,4,5].filter(p=>st.par[p].n&&mine.par[p].n).map(p=>row(`Par ${p}s (each)`,toParF(mine.par[p].over),toParF(st.par[p].over))).join("")}
+      ${row("Putts / 18",mine.putts18!=null?mine.putts18.toFixed(1):"—",st.putts18!=null?st.putts18.toFixed(1):"—")}
+      ${row("Penalties / 18",mine.pen18.toFixed(1),st.pen18.toFixed(1))}
+      ${row("Fairways",mine.tee4.n?Math.round(mine.tee4.c.F/mine.tee4.n*100)+"%":"—",st.tee4.n?Math.round(st.tee4.c.F/st.tee4.n*100)+"%":"—")}
+      ${row("Pars or better",Math.round((mine.types.eagle+mine.types.birdie+mine.types.par)/mine.holes*100)+"%",Math.round((st.types.eagle+st.types.birdie+st.types.par)/st.holes*100)+"%")}
+    </table></div>${st.puttHoles&&st.puttHoles<st.holes?`<div class="note">${esc(name)}'s putts were logged on ${st.puttHoles} of ${st.holes} holes.</div>`:""}</div>`;
+    h+=`<div class="section"><div class="eyebrow">${esc(name)}'s game</div>${statsBody(st,name)}</div>`;
+  } else h+=`<div class="section"><div class="panel muted">No finished rounds with ${esc(name)} yet.</div></div>`;
+  const rs=doneRounds().filter(r=>(r.players||[]).indexOf(name)>0).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  if(rs.length) h+=`<div class="section"><div class="eyebrow">Recent rounds together</div>${roundList(rs)}</div>`;
+  const others=allGuestNames().filter(n=>n!==name);
+  h+=`<div class="section"><div class="eyebrow">Edit ${esc(name)}</div><div class="panel stack">
+    <label class="stack" style="gap:6px"><span class="note">Name (type an existing player's name to merge them)</span>
+      <div class="row" style="flex-wrap:nowrap"><input type="text" id="gname" value="${esc(name)}" maxlength="24" autocomplete="off" list="gnames"><button class="btn" data-act="grename">Save</button></div></label>
+    <datalist id="gnames">${others.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+    ${S.confirm&&S.confirm.startsWith("merge:")?`<div class="confirm" style="border-color:var(--warn)"><strong>Merge ${esc(name)} into ${esc(S.confirm.slice(6))}?</strong><span class="note">All of ${esc(name)}'s rounds will be under ${esc(S.confirm.slice(6))}. This can't be undone.</span><div class="row"><button class="btn primary" data-act="grename" data-to="${esc(S.confirm.slice(6))}">Merge</button><button class="btn ghost" data-act="gcancel">Cancel</button></div></div>`:""}
+    <label class="stack" style="gap:6px"><span class="note">Handicap index (optional, for net scores)</span>
+      <div class="row" style="flex-wrap:nowrap"><input type="text" id="ghcp" inputmode="decimal" value="${gh??""}" placeholder="e.g. 18.4" maxlength="5" autocomplete="off"><button class="btn" data-act="ghcp">Save</button></div></label>
+    <button class="btn ghost" data-act="ghide">${S.guests.includes(name)?"Hide from the tee-off screen":"Show on the tee-off screen"}</button>
+  </div></div>`;
+  return h;
+}
+function renameGuest(from,to){
+  let skipped=0; const merged=allGuestNames().includes(to);
+  liveRounds().concat(Object.values(S.rounds).filter(r=>r&&r.deleted)).forEach(r=>{
+    const i=(r.players||[]).indexOf(from); if(i<1) return;
+    if(r.players.includes(to)){skipped++;return}
+    r.players[i]=to; touch(r);
+  });
+  saveLocal();
+  const gi=S.guests.indexOf(from); if(gi>=0){ if(S.guests.includes(to)) S.guests.splice(gi,1); else S.guests[gi]=to; } saveGuests();
+  if(S.gprof[from]){ if(!S.gprof[to]) S.gprof[to]=S.gprof[from]; delete S.gprof[from]; LS.set("bl_gprof",S.gprof) }
+  S.newPlayers=S.newPlayers.map(n=>n===from?to:n);
+  return {skipped,merged};
+}
+
 /* ---------- render ---------- */
 const $app=document.getElementById("app");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -399,8 +626,11 @@ function render(){
   else if(S.view==="hole") html=holeView(a);
   else if(S.view==="card") html=cardView(S.viewId?S.rounds[S.viewId]:a);
   else if(S.view==="history") html=historyView();
+  else if(S.view==="stats") html=statsView();
+  else if(S.view==="players") html=playersView();
+  else if(S.view==="player") html=playerView(S.guestName);
   $app.innerHTML=html;
-  const nav=[["home","Home"],["hole","Hole"],["card","Card"],["history","History"]];
+  const nav=[["home","Home"],["hole","Hole"],["card","Card"],["stats","Stats"],["history","History"]];
   document.getElementById("nav").innerHTML=nav.map(([k,l])=>`<button data-act="go" data-v="${k}" ${S.view===k?'aria-current="page"':""} ${(k==="hole"||k==="card")&&!a?"disabled":""}>${l}</button>`).join("");
 }
 function backupNag(){
@@ -614,11 +844,9 @@ function historyView(){
     const par=fc.par;
     h+=`<div class="section"><div class="eyebrow">Your average by hole · ${esc(fc.name)}</div><div class="cardscroll"><table class="sc"><tr class="h"><th>Hole</th>${par.map((_,i)=>`<th>${i+1}</th>`).join("")}</tr><tr><td>Par</td>${par.map(p=>`<td>${p}</td>`).join("")}</tr><tr class="mine"><td>Avg</td>${par.map((p,i)=>{const a=holeAvg(S.filter,i);return `<td style="${a&&a.avg-p>=2?"color:var(--bad)":""}">${a?a.avg.toFixed(1):""}</td>`}).join("")}</tr></table></div><div class="note">Red marks holes where you average double bogey or worse.</div></div>`;
   }
-  const people=S.guests.map(guestStats).filter(g=>g.rounds);
+  const people=allGuestNames().map(guestStats).filter(g=>g.rounds);
   if(people.length){
-    h+=`<div class="section"><div class="eyebrow">Playing partners</div><div class="rlist">${people.map(g=>`<div class="ritem" style="cursor:default"><div><strong>${esc(g.name)}</strong></div><div class="score">${g.avg!=null?g.avg.toFixed(1):"–"}</div>
-      <small>${plural(g.rounds,"round")} together${g.best!=null?" · best "+g.best:""}${g.puttAvg!=null?" · "+g.puttAvg.toFixed(1)+" putts":""}${g.myAvg!=null&&g.avg!=null?" · you avg "+g.myAvg.toFixed(1)+" in those rounds":""}</small></div>`).join("")}</div>
-      <div class="note">Big number is their average 18-hole score. Everything you log for guests is saved for side-by-side stats later.</div></div>`;
+    h+=`<div class="section"><div class="spread"><div class="eyebrow">Playing partners</div><button class="chip" data-act="go" data-v="players">Manage</button></div>${partnerList(people)}</div>`;
   }
   const uc=Object.values(S.courses);
   if(uc.length){
@@ -690,6 +918,25 @@ document.addEventListener("click",async e=>{
   else if(act==="cancel"){S.confirm=null;render()}
   else if(act==="del"){const r=S.rounds[el.dataset.id];r.deleted=true;r.status="done";touch(r);S.confirm=null;S.viewId=null;S.view="home";render();toast("Round deleted")}
   else if(act==="filter"){S.filter=el.dataset.v;render()}
+  else if(act==="sfilter"){S.sFilter=el.dataset.v;render()}
+  else if(act==="srange"){S.sRange=el.dataset.v;render()}
+  else if(act==="guest"){S.guestName=el.dataset.n;S.view="player";S.confirm=null;render();scrollTo(0,0)}
+  else if(act==="gback"){S.view="players";S.confirm=null;render();scrollTo(0,0)}
+  else if(act==="grename"){
+    const from=S.guestName, to=(el.dataset.to||document.getElementById("gname").value||"").trim();
+    if(!to||to===from){toast("Type a new name");return}
+    if(to.toLowerCase()===ME.toLowerCase()){toast("That name is taken by you");return}
+    if(allGuestNames().includes(to)&&S.confirm!=="merge:"+to){S.confirm="merge:"+to;render();return}
+    const res=renameGuest(from,to); S.guestName=to; S.confirm=null; render();
+    toast(res.skipped?`Done. ${plural(res.skipped,"round")} had both names and were left alone`:(res.merged?"Players merged":"Name changed"));
+  }
+  else if(act==="ghcp"){
+    const v=(document.getElementById("ghcp").value||"").trim(); const g=S.gprof[S.guestName]||(S.gprof[S.guestName]={});
+    if(v===""){delete g.hcp}else{const n=parseFloat(v); if(isNaN(n)||n<-10||n>54){toast("Handicap index is a number from -10 to 54");return} g.hcp=Math.round(n*10)/10}
+    LS.set("bl_gprof",S.gprof); render(); toast("Handicap saved");
+  }
+  else if(act==="ghide"){const n=S.guestName; if(S.guests.includes(n)) S.guests=S.guests.filter(x=>x!==n); else S.guests.push(n); saveGuests(); render()}
+  else if(act==="gcancel"){S.confirm=null;render()}
   else if(act==="copy"){
     const txt=backupText();
     const mark=()=>{S.backupAt=Date.now();LS.set("bl_backup_at",S.backupAt)};
