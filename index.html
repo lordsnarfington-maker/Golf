@@ -1,0 +1,556 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1D6A3A"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231D6A3A'/%3E%3Cpath d='M26 12v40' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M28 13l20 8-20 8z' fill='%23E27B1E'/%3E%3Cellipse cx='32' cy='52' rx='16' ry='4' fill='%234FAE67'/%3E%3C/svg%3E"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Golf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#EDF1E8; --surface:#FFFFFF; --surface-2:#E2E8DC; --ink:#142018; --muted:#58685C; --line:#C9D3C3;
+  --accent:#1D6A3A; --accent-ink:#FFFFFF; --accent-soft:#D5E8D9;
+  --tee:#E27B1E; --tee-y:#E8C21C; --tee-b:#2F8FD0;
+  --rough:#A9CBA0; --fair:#86C07A; --green:#4FAE67; --sand:#EAD8A3; --water:#4A8FCB; --mapline:#FFFFFF;
+  --good:#1D6A3A; --warn:#B8621B; --bad:#A63A2E;
+  --font-d:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --font-b:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0E1611; --surface:#16211A; --surface-2:#1E2B22; --ink:#E6EEE5; --muted:#98A99B; --line:#2B3A2F;
+  --accent:#57C47A; --accent-ink:#06140B; --accent-soft:#1D3A26;
+  --rough:#1F3B25; --fair:#2C5733; --green:#3E9656; --sand:#A99661; --water:#2E6A9C; --mapline:#E6EEE5;
+  --good:#57C47A; --warn:#E39A52; --bad:#E07565;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1611; --surface:#16211A; --surface-2:#1E2B22; --ink:#E6EEE5; --muted:#98A99B; --line:#2B3A2F;
+  --accent:#57C47A; --accent-ink:#06140B; --accent-soft:#1D3A26;
+  --rough:#1F3B25; --fair:#2C5733; --green:#3E9656; --sand:#A99661; --water:#2E6A9C; --mapline:#E6EEE5;
+  --good:#57C47A; --warn:#E39A52; --bad:#E07565;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-b);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+#app{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:12px 96px}
+h1,h2,h3{font-family:var(--font-d);font-weight:700;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:34px;line-height:1}
+h2{font-size:22px}
+.eyebrow{font-family:var(--font-d);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.num{font-family:var(--font-d);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.section{display:flex;flex-direction:column;gap:10px;margin-top:22px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 16px;font-weight:600;min-height:48px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.block{width:100%}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad);border-color:var(--bad);background:transparent}
+.btn:disabled{opacity:.45;cursor:default}
+a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit}
+input[type=text],textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;width:100%}
+textarea{min-height:110px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+
+/* header */
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+.sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--good)} .dot.wait{background:var(--warn)} .dot.off{background:var(--bad)}
+
+/* tees chooser */
+.tees{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.teeopt{border:2px solid var(--line);border-radius:12px;padding:10px;background:var(--surface);text-align:left;display:flex;flex-direction:column;gap:2px}
+.teeopt[aria-pressed="true"]{border-color:var(--ink)}
+.teechip{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:6px;border:1px solid rgba(0,0,0,.2)}
+.chip{border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--surface);font-weight:500;min-height:38px}
+.chip.x{padding-right:8px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.stat{background:var(--surface);padding:12px 10px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--font-d);font-size:28px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+
+/* rounds list */
+.rlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.ritem{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;width:100%}
+.ritem:last-child{border-bottom:0}
+.ritem .score{font-family:var(--font-d);font-size:30px;font-weight:700;line-height:1;grid-row:span 2;align-self:center;font-variant-numeric:tabular-nums}
+.ritem small{color:var(--muted)}
+
+/* hole view */
+.holehead{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:8px}
+.holehead .mid{text-align:center}
+.holenum{font-family:var(--font-d);font-size:40px;font-weight:700;line-height:.9}
+.nav{width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:22px;font-weight:700}
+.facts{display:flex;justify-content:center;gap:14px;font-family:var(--font-d);font-size:17px;font-weight:600;color:var(--muted)}
+.facts b{color:var(--ink)}
+.mapwrap{position:relative;border-radius:16px;overflow:hidden;background:var(--rough);border:1px solid var(--line);height:min(54vh,470px);touch-action:manipulation}
+.mapwrap svg{display:block;width:100%;height:100%}
+.yd{position:absolute;left:10px;top:10px;background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 12px;box-shadow:0 2px 10px rgba(0,0,0,.18);display:flex;gap:12px;align-items:flex-end}
+.yd .c{font-family:var(--font-d);font-size:40px;font-weight:700;line-height:.9;font-variant-numeric:tabular-nums}
+.yd .fb{display:flex;flex-direction:column;font-family:var(--font-d);font-size:15px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.yd .fb span{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-right:4px}
+.maptools{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.pill{background:var(--surface);color:var(--ink);border:0;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.18);text-decoration:none;display:inline-block}
+.hint{position:absolute;right:10px;top:10px;max-width:40%;text-align:right;font-size:12px;background:rgba(0,0,0,.55);color:#fff;border-radius:8px;padding:6px 8px}
+.hz{display:flex;flex-wrap:wrap;gap:6px}
+.hz span{font-size:13px;background:var(--surface-2);border-radius:8px;padding:5px 8px}
+.hz i{font-style:normal;display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:0}
+
+.entry{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.erow{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.erow:last-child{border-bottom:0}
+.erow .lbl{font-weight:600}
+.erow .lbl small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.me{background:var(--accent-soft)}
+.stepper{display:flex;align-items:center;gap:4px}
+.stepper button{width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:24px;font-weight:600;line-height:1}
+.stepper output{min-width:48px;text-align:center;font-family:var(--font-d);font-size:32px;font-weight:700;font-variant-numeric:tabular-nums}
+.stepper.sm button{width:42px;height:42px;font-size:20px}
+.stepper.sm output{min-width:40px;font-size:26px}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:10px;min-height:42px;font-size:13px;font-weight:600;padding:4px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seglbl{padding:10px 12px 0;font-weight:600}
+
+/* scorecard */
+.cardscroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+table.sc{border-collapse:collapse;font-family:var(--font-d);font-variant-numeric:tabular-nums;font-size:16px;min-width:100%}
+.sc th,.sc td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 4px;text-align:center;min-width:32px}
+.sc th:first-child,.sc td:first-child{text-align:left;padding-left:10px;min-width:74px;position:sticky;left:0;background:var(--surface);font-weight:600;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+.sc tr.h th{background:var(--ink);color:var(--bg)}
+.sc tr.h th:first-child{background:var(--ink)}
+.sc tr.o td{color:var(--muted);font-size:14px}
+.sc tr.mine td{font-weight:700;font-size:18px}
+.sc td.tot{font-weight:700;background:var(--surface-2)}
+.sc td.cur{box-shadow:inset 0 0 0 2px var(--accent)}
+.mk{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center}
+.mk.bird{border:2px solid var(--good);border-radius:50%}
+.mk.eagle{border:2px solid var(--good);border-radius:50%;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--good)}
+.mk.bog{border:1.5px solid var(--muted)}
+.mk.dbl{border:1.5px solid var(--bad);color:var(--bad)}
+
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;z-index:5}
+.bar nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:100%;max-width:560px}
+.bar button{border:0;background:transparent;border-radius:10px;padding:8px 4px;font-family:var(--font-d);font-size:16px;font-weight:600;letter-spacing:.04em;color:var(--muted);min-height:48px}
+.bar button[aria-current="page"]{color:var(--ink);background:var(--surface-2)}
+.bar button:disabled{opacity:.35}
+.confirm{border:1px solid var(--bad);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.note{font-size:13px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:9;font-size:14px}
+@media (prefers-reduced-motion:no-preference){.btn,.stepper button,.seg button{transition:transform .08s}.btn:active,.stepper button:active,.seg button:active{transform:scale(.96)}}
+</style>
+
+<div id="app"></div>
+<div class="bar"><nav id="nav" aria-label="Sections"></nav></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const GEO={
+"1":{path:"42.349553,-88.005964 42.349443,-88.009234 42.349453,-88.010401",green:"42.349504,-88.010291 42.349522,-88.010363 42.349524,-88.010442 42.349519,-88.010486 42.349482,-88.010569 42.349463,-88.010584 42.349435,-88.010585 42.349382,-88.010531 42.349366,-88.010477 42.349359,-88.010417 42.349359,-88.010332 42.349406,-88.010225 42.349433,-88.010219 42.349469,-88.010231",hz:["b:42.349824,-88.010157 42.349832,-88.010175 42.349835,-88.010193 42.349831,-88.010211 42.349804,-88.010219 42.349796,-88.010207 42.34979,-88.01018 42.349799,-88.010166","b:42.349821,-88.009993 42.349842,-88.009957 42.349865,-88.009955 42.349872,-88.009983 42.349849,-88.010007 42.34984,-88.010053 42.349812,-88.010067 42.349802,-88.010033"],tees:["42.349913,-88.005764 42.349932,-88.006 42.349905,-88.00609 42.349847,-88.006012 42.349829,-88.005857 42.349842,-88.005717","42.349505,-88.005984 42.349509,-88.005856 42.349554,-88.005769 42.349595,-88.005831 42.349598,-88.005974 42.34956,-88.006045"]},
+"2":{path:"42.349479,-88.010957 42.349428,-88.013197",green:"42.34936,-88.013288 42.349353,-88.013229 42.34935,-88.013171 42.349353,-88.013113 42.349375,-88.013046 42.34939,-88.013031 42.349419,-88.013021 42.349479,-88.013046 42.349497,-88.013092 42.349501,-88.013156 42.349501,-88.013233 42.349483,-88.013337 42.349452,-88.013366 42.349416,-88.013367",hz:["b:42.34953,-88.013177 42.349535,-88.013142 42.349561,-88.0131 42.349572,-88.013119 42.349583,-88.013189 42.349572,-88.013251 42.349558,-88.013265 42.349529,-88.013251","b:42.34932,-88.013297 42.349303,-88.013334 42.349262,-88.01333 42.349254,-88.01328 42.349278,-88.013199 42.349286,-88.013134 42.349315,-88.013114 42.349323,-88.013203"],tees:["42.349413,-88.010977 42.34943,-88.010867 42.349488,-88.010843 42.349551,-88.010942 42.349543,-88.011056 42.349489,-88.011086","42.349909,-88.01109 42.349894,-88.010865 42.349915,-88.010582 42.349975,-88.010578 42.349958,-88.010905 42.349977,-88.011107"]},
+"3":{path:"42.350132,-88.014067 42.348593,-88.013762 42.347667,-88.013994",green:"42.347738,-88.013931 42.347687,-88.013925 42.34763,-88.013941 42.347601,-88.013972 42.347586,-88.014009 42.347601,-88.014054 42.347634,-88.014075 42.347679,-88.014071 42.347725,-88.014055 42.347752,-88.014013 42.347763,-88.01399 42.347753,-88.013949",hz:["b:42.350387,-88.013635 42.350385,-88.013656 42.350349,-88.013674 42.350322,-88.013667 42.350313,-88.013638 42.350311,-88.013619 42.350331,-88.013601 42.350367,-88.013603","b:42.350313,-88.013895 42.350303,-88.013973 42.350308,-88.01403 42.350292,-88.014051 42.350277,-88.01401 42.350282,-88.013944 42.350291,-88.013888 42.350313,-88.013862","b:42.347795,-88.014106 42.347821,-88.014087 42.347859,-88.014112 42.347795,-88.014162 42.347744,-88.014195 42.34771,-88.014202 42.347684,-88.014156 42.34774,-88.014148"],tees:["42.349971,-88.013965 42.350122,-88.013975 42.350174,-88.014047 42.350115,-88.014153 42.349983,-88.014128 42.349934,-88.014068"]},
+"4":{path:"42.347512,-88.013583 42.347655,-88.010344 42.347659,-88.009745 42.347662,-88.009427",green:"42.34756,-88.00943 42.347577,-88.009367 42.347609,-88.009311 42.347643,-88.009286 42.347696,-88.009278 42.34773,-88.009307 42.347753,-88.009358 42.347763,-88.009441 42.34775,-88.009515 42.347726,-88.009577 42.347683,-88.009604 42.347637,-88.009605 42.347599,-88.009571 42.347574,-88.009536",hz:["w:42.347637,-88.013053 42.347717,-88.013043 42.34784,-88.013032 42.347884,-88.013084 42.34779,-88.013189 42.347735,-88.013268 42.347732,-88.013447 42.347775,-88.013601 42.34774,-88.013685 42.347668,-88.013571 42.347659,-88.013485 42.347616,-88.013352 42.347581,-88.01323 42.347563,-88.013103","b:42.348093,-88.009244 42.348088,-88.009311 42.347963,-88.009298 42.347899,-88.009232 42.347919,-88.009134 42.347961,-88.009159 42.347981,-88.00925 42.348033,-88.009231"],tees:["42.347477,-88.013536 42.347483,-88.013472 42.347527,-88.013426 42.347552,-88.013499 42.347547,-88.013585 42.347509,-88.013621"]},
+"5":{path:"42.347517,-88.009105 42.347648,-88.007318",green:"42.347707,-88.007443 42.347725,-88.007387 42.347725,-88.007313 42.347717,-88.007253 42.3477,-88.007204 42.347671,-88.007163 42.347638,-88.00716 42.347587,-88.007209 42.347577,-88.007272 42.347572,-88.007332 42.347583,-88.00741 42.347601,-88.00747 42.34762,-88.007491 42.347663,-88.007502",hz:["b:42.347822,-88.007467 42.34784,-88.007491 42.347851,-88.007519 42.347838,-88.00758 42.347813,-88.007599 42.347785,-88.007574 42.347766,-88.007499 42.347775,-88.007459","b:42.347508,-88.007418 42.347515,-88.007467 42.347487,-88.007532 42.347464,-88.007519 42.347463,-88.007412 42.347453,-88.007349 42.347465,-88.007327 42.347504,-88.007343"],tees:["42.347591,-88.009049 42.347578,-88.008946 42.347508,-88.008901 42.34745,-88.008983 42.347456,-88.009118 42.347524,-88.009169"]},
+"6":{path:"42.34811,-88.007462 42.348204,-88.011275 42.348102,-88.012612 42.348054,-88.013318",green:"42.348132,-88.013228 42.34815,-88.013292 42.348144,-88.013367 42.348125,-88.01344 42.348087,-88.013477 42.348037,-88.013479 42.347998,-88.013453 42.347968,-88.013407 42.347949,-88.013355 42.34795,-88.013285 42.347971,-88.013217 42.348016,-88.013169 42.348047,-88.013167 42.348093,-88.013179",hz:["w:42.347637,-88.013053 42.347717,-88.013043 42.34784,-88.013032 42.347884,-88.013084 42.34779,-88.013189 42.347735,-88.013268 42.347732,-88.013447 42.347775,-88.013601 42.34774,-88.013685 42.347668,-88.013571 42.347659,-88.013485 42.347616,-88.013352 42.347581,-88.01323 42.347563,-88.013103","b:42.348093,-88.009244 42.348088,-88.009311 42.347963,-88.009298 42.347899,-88.009232 42.347919,-88.009134 42.347961,-88.009159 42.347981,-88.00925 42.348033,-88.009231","b:42.347822,-88.007467 42.34784,-88.007491 42.347851,-88.007519 42.347838,-88.00758 42.347813,-88.007599 42.347785,-88.007574 42.347766,-88.007499 42.347775,-88.007459"],tees:["42.348068,-88.007596 42.34808,-88.007452 42.348139,-88.007426 42.348153,-88.007506 42.348139,-88.007647 42.348101,-88.00769"]},
+"7":{path:"42.348615,-88.013182 42.348805,-88.010147 42.348846,-88.008834 42.348693,-88.007546",green:"42.348776,-88.007627 42.348779,-88.007578 42.348761,-88.007509 42.348739,-88.00746 42.348706,-88.007411 42.348677,-88.007406 42.348645,-88.007425 42.348611,-88.007519 42.348626,-88.007589 42.34865,-88.007648 42.34868,-88.007695 42.348698,-88.007709 42.348735,-88.007707 42.348762,-88.007693",hz:["w:42.348934,-88.007512 42.348835,-88.007496 42.348791,-88.007128 42.348518,-88.007092 42.348504,-88.00747 42.348541,-88.007843 42.348559,-88.008126 42.34834,-88.00819 42.348275,-88.007922 42.348236,-88.007618 42.348301,-88.007136 42.348365,-88.006671 42.348633,-88.00662 42.348881,-88.006957"],tees:["42.348575,-88.013064 42.348642,-88.01306 42.348699,-88.0131 42.348672,-88.013266 42.348586,-88.013264 42.348545,-88.013201","42.34887,-88.012515 42.348881,-88.01256 42.348859,-88.01259 42.348818,-88.012587 42.348806,-88.012552 42.348812,-88.01251"]},
+"8":{path:"42.34908,-88.007546 42.347878,-88.005524 42.347543,-88.004974",green:"42.347629,-88.005035 42.347616,-88.004978 42.347603,-88.004928 42.347567,-88.004858 42.347555,-88.004847 42.347517,-88.004844 42.347498,-88.004854 42.347471,-88.004958 42.347484,-88.005019 42.347511,-88.005071 42.347554,-88.005115 42.34757,-88.00512 42.347602,-88.005114 42.347617,-88.0051",hz:["w:42.348934,-88.007512 42.348835,-88.007496 42.348791,-88.007128 42.348518,-88.007092 42.348504,-88.00747 42.348541,-88.007843 42.348559,-88.008126 42.34834,-88.00819 42.348275,-88.007922 42.348236,-88.007618 42.348301,-88.007136 42.348365,-88.006671 42.348633,-88.00662 42.348881,-88.006957","b:42.347522,-88.005189 42.347537,-88.00522 42.347567,-88.005309 42.347553,-88.00538 42.3475,-88.00535 42.347477,-88.00527 42.347465,-88.005194 42.347486,-88.005153","b:42.347721,-88.004946 42.347735,-88.004982 42.347731,-88.005025 42.347692,-88.005005 42.347686,-88.004966 42.347666,-88.004937 42.347665,-88.004875 42.347688,-88.004875"],tees:["42.349018,-88.007523 42.349008,-88.007383 42.349058,-88.007289 42.349117,-88.007374 42.349127,-88.007525 42.34908,-88.007605"]},
+"9":{path:"42.347492,-88.004548 42.348793,-88.005582 42.349356,-88.005606",green:"42.349308,-88.005552 42.349343,-88.005526 42.349387,-88.005502 42.349434,-88.005501 42.349482,-88.005564 42.349476,-88.005602 42.349454,-88.00565 42.349381,-88.005708 42.349343,-88.00572 42.349316,-88.005725 42.349283,-88.005725 42.349237,-88.005695 42.349225,-88.005654 42.349231,-88.005629",hz:["b:42.347721,-88.004946 42.347735,-88.004982 42.347731,-88.005025 42.347692,-88.005005 42.347686,-88.004966 42.347666,-88.004937 42.347665,-88.004875 42.347688,-88.004875","b:42.348851,-88.005343 42.348836,-88.005255 42.348861,-88.005177 42.348902,-88.00518 42.348926,-88.005258 42.348929,-88.005341 42.34893,-88.005401 42.348883,-88.00542","b:42.349285,-88.005415 42.349305,-88.005407 42.349338,-88.005421 42.349341,-88.005449 42.349284,-88.005482 42.349257,-88.005482 42.349225,-88.005441 42.34923,-88.005423"],tees:["42.347604,-88.004556 42.347743,-88.004631 42.347728,-88.004728 42.34757,-88.004641 42.34745,-88.004562 42.347472,-88.004515"]},
+"10":{path:"42.349866,-88.005762 42.349941,-88.009027 42.349947,-88.010168",green:"42.349876,-88.010109 42.349881,-88.010083 42.349888,-88.010064 42.34991,-88.010039 42.349937,-88.010035 42.349959,-88.010051 42.350006,-88.010118 42.350018,-88.01016 42.350016,-88.010196 42.350001,-88.010273 42.349974,-88.010284 42.349941,-88.010276 42.349895,-88.010253 42.349883,-88.010228",hz:["b:42.349824,-88.010157 42.349832,-88.010175 42.349835,-88.010193 42.349831,-88.010211 42.349804,-88.010219 42.349796,-88.010207 42.34979,-88.01018 42.349799,-88.010166","b:42.349821,-88.009993 42.349842,-88.009957 42.349865,-88.009955 42.349872,-88.009983 42.349849,-88.010007 42.34984,-88.010053 42.349812,-88.010067 42.349802,-88.010033","b:42.350138,-88.009401 42.350178,-88.009473 42.350135,-88.009533 42.350097,-88.009479 42.350057,-88.009421 42.350037,-88.009379 42.350056,-88.009315 42.350107,-88.009319"],tees:["42.349913,-88.005764 42.349932,-88.006 42.349905,-88.00609 42.349847,-88.006012 42.349829,-88.005857 42.349842,-88.005717","42.349505,-88.005984 42.349509,-88.005856 42.349554,-88.005769 42.349595,-88.005831 42.349598,-88.005974 42.34956,-88.006045"]},
+"11":{path:"42.349939,-88.010641 42.350027,-88.013294 42.350418,-88.013995",green:"42.350345,-88.013936 42.35035,-88.013906 42.350365,-88.01387 42.350424,-88.013846 42.350445,-88.013869 42.350481,-88.013944 42.350493,-88.013986 42.350505,-88.014073 42.350489,-88.01411 42.350459,-88.014133 42.350401,-88.014135 42.350381,-88.014126 42.35035,-88.014051 42.350345,-88.014005",hz:["w:42.350222,-88.010649 42.350242,-88.010804 42.350213,-88.011109 42.350108,-88.011162 42.350172,-88.011253 42.350176,-88.011386 42.3501,-88.011506 42.350043,-88.011667 42.349953,-88.01165 42.349931,-88.011474 42.350023,-88.011325 42.350077,-88.011162 42.350077,-88.01087 42.350114,-88.010657","b:42.350387,-88.013635 42.350385,-88.013656 42.350349,-88.013674 42.350322,-88.013667 42.350313,-88.013638 42.350311,-88.013619 42.350331,-88.013601 42.350367,-88.013603","b:42.350313,-88.013895 42.350303,-88.013973 42.350308,-88.01403 42.350292,-88.014051 42.350277,-88.01401 42.350282,-88.013944 42.350291,-88.013888 42.350313,-88.013862","b:42.349824,-88.010157 42.349832,-88.010175 42.349835,-88.010193 42.349831,-88.010211 42.349804,-88.010219 42.349796,-88.010207 42.34979,-88.01018 42.349799,-88.010166"],tees:["42.350189,-88.010287 42.350205,-88.010152 42.350275,-88.010152 42.350287,-88.010241 42.350263,-88.010365 42.35021,-88.010395","42.349413,-88.010977 42.34943,-88.010867 42.349488,-88.010843 42.349551,-88.010942 42.349543,-88.011056 42.349489,-88.011086","42.349909,-88.01109 42.349894,-88.010865 42.349915,-88.010582 42.349975,-88.010578 42.349958,-88.010905 42.349977,-88.011107"]},
+"12":{path:"42.350375,-88.013092 42.351205,-88.014014",green:"42.351169,-88.013916 42.351239,-88.013938 42.351283,-88.013949 42.351323,-88.01396 42.351351,-88.014015 42.351332,-88.014062 42.351305,-88.014097 42.351233,-88.014116 42.351196,-88.014105 42.35116,-88.014092 42.351118,-88.014076 42.351077,-88.01401 42.351082,-88.013971 42.351098,-88.013936",hz:["b:42.350654,-88.012716 42.350698,-88.012741 42.35071,-88.01279 42.350677,-88.012784 42.350639,-88.012781 42.350609,-88.012765 42.35059,-88.012736 42.350609,-88.012699","b:42.350856,-88.013652 42.350866,-88.013689 42.350847,-88.013717 42.350833,-88.013768 42.350808,-88.013743 42.350791,-88.013709 42.350788,-88.013654 42.350822,-88.013641","b:42.350387,-88.013635 42.350385,-88.013656 42.350349,-88.013674 42.350322,-88.013667 42.350313,-88.013638 42.350311,-88.013619 42.350331,-88.013601 42.350367,-88.013603"],tees:["42.350505,-88.013091 42.350545,-88.013177 42.350431,-88.013272 42.350318,-88.013121 42.350345,-88.012993 42.350401,-88.01297","42.350418,-88.012659 42.350416,-88.01236 42.350408,-88.012112 42.350479,-88.012148 42.350494,-88.012614 42.350466,-88.012776"]},
+"13":{path:"42.351523,-88.014096 42.351458,-88.010732 42.351481,-88.009568 42.351439,-88.008671",green:"42.351481,-88.008832 42.351501,-88.008827 42.351532,-88.008749 42.351534,-88.008706 42.351509,-88.008624 42.35147,-88.008566 42.351448,-88.008542 42.351405,-88.008524 42.351378,-88.008559 42.351366,-88.008584 42.35133,-88.008649 42.351352,-88.00872 42.351385,-88.008757 42.351431,-88.008817",hz:["b:42.351554,-88.008858 42.351581,-88.008835 42.351605,-88.008831 42.351632,-88.008877 42.351631,-88.008924 42.3516,-88.008954 42.351573,-88.008937 42.351553,-88.008897","b:42.351339,-88.008809 42.351362,-88.00882 42.351356,-88.008894 42.351294,-88.008938 42.351253,-88.008959 42.351241,-88.008938 42.35126,-88.008885 42.351288,-88.008831"],tees:["42.351585,-88.013897 42.35157,-88.013817 42.351508,-88.01381 42.351485,-88.013943 42.35153,-88.014183 42.351602,-88.014153"]},
+"14":{path:"42.351063,-88.008306 42.350858,-88.011566 42.350816,-88.012853",green:"42.350747,-88.012894 42.350746,-88.012857 42.350751,-88.012821 42.350772,-88.012745 42.350789,-88.012725 42.350833,-88.012721 42.350848,-88.012743 42.35087,-88.012824 42.350879,-88.012878 42.350886,-88.012925 42.350874,-88.012984 42.350848,-88.012992 42.350796,-88.012968 42.350774,-88.012955",hz:["b:42.35094,-88.012442 42.350915,-88.012372 42.350962,-88.012345 42.351022,-88.012335 42.351056,-88.012397 42.351012,-88.012498 42.350983,-88.012551 42.350935,-88.012519","b:42.350654,-88.012716 42.350698,-88.012741 42.35071,-88.01279 42.350677,-88.012784 42.350639,-88.012781 42.350609,-88.012765 42.35059,-88.012736 42.350609,-88.012699","b:42.351339,-88.008809 42.351362,-88.00882 42.351356,-88.008894 42.351294,-88.008938 42.351253,-88.008959 42.351241,-88.008938 42.35126,-88.008885 42.351288,-88.008831","b:42.350561,-88.01088 42.350574,-88.0108 42.35056,-88.010712 42.350644,-88.01073 42.350675,-88.010791 42.350666,-88.010888 42.350593,-88.01099 42.350547,-88.010984"],tees:["42.351104,-88.008263 42.351129,-88.008338 42.351116,-88.008437 42.351002,-88.008447 42.350996,-88.008346 42.351007,-88.008259"]},
+"15":{path:"42.350456,-88.012686 42.350444,-88.010613",green:"42.350498,-88.010734 42.350509,-88.010687 42.350508,-88.010642 42.350493,-88.010557 42.350482,-88.010536 42.350464,-88.010517 42.350422,-88.010498 42.350402,-88.010503 42.350387,-88.010516 42.350377,-88.010601 42.350386,-88.010637 42.350397,-88.010681 42.350423,-88.010738 42.350458,-88.010754",hz:["w:42.350481,-88.010902 42.350535,-88.011029 42.350625,-88.011089 42.350603,-88.011296 42.350565,-88.011362 42.350572,-88.011482 42.350507,-88.011459 42.350473,-88.011382 42.35047,-88.011298 42.350352,-88.011143 42.350296,-88.011021 42.350301,-88.010881 42.350327,-88.010769 42.350413,-88.010801","w:42.350222,-88.010649 42.350242,-88.010804 42.350213,-88.011109 42.350108,-88.011162 42.350172,-88.011253 42.350176,-88.011386 42.3501,-88.011506 42.350043,-88.011667 42.349953,-88.01165 42.349931,-88.011474 42.350023,-88.011325 42.350077,-88.011162 42.350077,-88.01087 42.350114,-88.010657","b:42.350654,-88.012716 42.350698,-88.012741 42.35071,-88.01279 42.350677,-88.012784 42.350639,-88.012781 42.350609,-88.012765 42.35059,-88.012736 42.350609,-88.012699","b:42.350561,-88.01088 42.350574,-88.0108 42.35056,-88.010712 42.350644,-88.01073 42.350675,-88.010791 42.350666,-88.010888 42.350593,-88.01099 42.350547,-88.010984"],tees:["42.350505,-88.013091 42.350545,-88.013177 42.350431,-88.013272 42.350318,-88.013121 42.350345,-88.012993 42.350401,-88.01297","42.350418,-88.012659 42.350416,-88.01236 42.350408,-88.012112 42.350479,-88.012148 42.350494,-88.012614 42.350466,-88.012776"]},
+"16":{path:"42.350216,-88.010326 42.350519,-88.007422 42.350509,-88.005949",green:"42.350449,-88.006047 42.350456,-88.005973 42.350461,-88.005894 42.350462,-88.005818 42.350498,-88.005778 42.350524,-88.005778 42.350552,-88.005778 42.35058,-88.005832 42.350576,-88.005887 42.350572,-88.005963 42.350562,-88.006042 42.350551,-88.006105 42.350502,-88.006101 42.350467,-88.006091",hz:["w:42.350651,-88.006898 42.350668,-88.006993 42.35059,-88.007049 42.350491,-88.007038 42.350418,-88.007043 42.350323,-88.006984 42.350312,-88.006846 42.350353,-88.006713 42.350347,-88.006637 42.350318,-88.006509 42.350372,-88.00648 42.350418,-88.006531 42.350493,-88.006682 42.350575,-88.006796","b:42.350592,-88.006084 42.350595,-88.00606 42.350599,-88.006008 42.350623,-88.005995 42.350636,-88.006025 42.350633,-88.006052 42.35063,-88.006088 42.350615,-88.006105","b:42.350346,-88.006048 42.350361,-88.005939 42.35037,-88.0058 42.350407,-88.005771 42.350413,-88.005853 42.350399,-88.00594 42.3504,-88.006018 42.350398,-88.006088","b:42.350138,-88.009401 42.350178,-88.009473 42.350135,-88.009533 42.350097,-88.009479 42.350057,-88.009421 42.350037,-88.009379 42.350056,-88.009315 42.350107,-88.009319"],tees:["42.350189,-88.010287 42.350205,-88.010152 42.350275,-88.010152 42.350287,-88.010241 42.350263,-88.010365 42.35021,-88.010395","42.349909,-88.01109 42.349894,-88.010865 42.349915,-88.010582 42.349975,-88.010578 42.349958,-88.010905 42.349977,-88.011107"],fw:"42.350333,-88.00872 42.350361,-88.008367 42.35038,-88.008023 42.350385,-88.007738 42.350412,-88.007301 42.350454,-88.00723 42.350487,-88.007209 42.350539,-88.007222 42.350611,-88.00731 42.350632,-88.007385 42.350634,-88.007483 42.350628,-88.007629 42.350595,-88.00819 42.350576,-88.00855 42.350556,-88.008809 42.350545,-88.008907 42.350432,-88.009123 42.350381,-88.009118 42.350328,-88.009071 42.350312,-88.009012"},
+"17":{path:"42.350905,-88.005833 42.351086,-88.007796",green:"42.351185,-88.007765 42.351193,-88.007798 42.351184,-88.007842 42.351137,-88.007899 42.351105,-88.007909 42.351035,-88.007899 42.351015,-88.007889 42.35099,-88.007813 42.350995,-88.007758 42.351004,-88.007716 42.351035,-88.007671 42.351058,-88.007661 42.351124,-88.007683 42.35115,-88.007702",hz:["b:42.350592,-88.006084 42.350595,-88.00606 42.350599,-88.006008 42.350623,-88.005995 42.350636,-88.006025 42.350633,-88.006052 42.35063,-88.006088 42.350615,-88.006105","b:42.351205,-88.007553 42.35124,-88.007595 42.351248,-88.007664 42.351224,-88.007689 42.351188,-88.007625 42.351147,-88.007595 42.351118,-88.007555 42.351147,-88.007535","b:42.351019,-88.007576 42.351001,-88.007614 42.350965,-88.007553 42.350922,-88.007491 42.350906,-88.007411 42.350934,-88.007396 42.350959,-88.00748 42.350984,-88.007517"],tees:["42.350946,-88.005913 42.350977,-88.00613 42.350965,-88.006212 42.350901,-88.006088 42.350871,-88.005898 42.350889,-88.005775"]},
+"18":{path:"42.351602,-88.008234 42.351437,-88.005857 42.3509,-88.004638",green:"42.350998,-88.004677 42.350995,-88.004629 42.350971,-88.004584 42.350907,-88.004548 42.350891,-88.004546 42.350858,-88.004542 42.350828,-88.004597 42.350827,-88.004649 42.350837,-88.004703 42.350851,-88.004773 42.350867,-88.00478 42.350903,-88.004773 42.35096,-88.004752 42.35098,-88.004744",hz:["b:42.35081,-88.004723 42.350793,-88.004612 42.350801,-88.004528 42.350824,-88.00448 42.350794,-88.004471 42.350774,-88.004516 42.350763,-88.004605 42.350781,-88.004716","b:42.351023,-88.004721 42.351031,-88.004649 42.351048,-88.004624 42.351067,-88.004665 42.351053,-88.004731 42.351057,-88.004792 42.351023,-88.004802 42.351025,-88.00477","b:42.350966,-88.004941 42.350955,-88.004929 42.350916,-88.004939 42.350915,-88.004963 42.350943,-88.005007 42.350952,-88.005059 42.350966,-88.005059 42.350987,-88.005014","b:42.35141,-88.005496 42.351424,-88.005544 42.351467,-88.005577 42.351437,-88.005629 42.351402,-88.005588 42.351382,-88.005558 42.351353,-88.005514 42.351374,-88.005471","b:42.351205,-88.007553 42.35124,-88.007595 42.351248,-88.007664 42.351224,-88.007689 42.351188,-88.007625 42.351147,-88.007595 42.351118,-88.007555 42.351147,-88.007535"],tees:["42.351589,-88.00838 42.351573,-88.008148 42.351581,-88.008046 42.35163,-88.008087 42.351646,-88.008229 42.351644,-88.008383"]}
+};
+
+const COURSE={
+  id:"brae-loch", name:"Brae Loch", place:"Grayslake, IL", phone:"847-968-3444",
+  par:[4,3,4,4,3,5,5,4,4, 4,4,3,5,4,3,4,3,4],
+  hcpM:[5,13,9,7,15,1,3,11,17, 6,12,18,4,2,14,10,16,8],
+  hcpW:[5,15,9,13,17,1,3,7,11, 6,12,18,4,8,16,2,14,10],
+  tees:{
+    orange:{label:"Orange",color:"var(--tee)",yards:[409,203,309,372,158,559,512,291,253, 396,314,124,487,405,185,395,161,358],rating:67.9,slope:117},
+    yellow:{label:"Yellow",color:"var(--tee-y)",yards:[400,198,289,330,150,443,452,281,242, 370,280,114,411,330,141,386,148,332],rating:65.4,slope:111},
+    blue:{label:"Blue",color:"var(--tee-b)",yards:[180,95,145,175,75,225,205,140,120, 180,150,60,205,165,75,180,80,170],rating:null,slope:null}
+  }
+};
+const ME="Matt";
+const PAR_TOTAL=COURSE.par.reduce((a,b)=>a+b,0);
+const TS=[["F","Fairway"],["L","Left"],["R","Right"],["S","Short"],["T","Trouble"]];
+
+/* ---------- geometry ---------- */
+const LAT0=42.3495, LON0=-88.0093, KX=111320*Math.cos(LAT0*Math.PI/180), KY=110574, YD=1.09361;
+const toXY=(lat,lon)=>[(lon-LON0)*KX,(lat-LAT0)*KY];
+const toLL=([x,y])=>[y/KY+LAT0,x/KX+LON0];
+const parse=s=>s.split(" ").map(p=>{const [a,b]=p.split(",").map(Number);return toXY(a,b)});
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const HOLES=[];
+for(let i=1;i<=18;i++){
+  const g=GEO[i]; const path=parse(g.path); const green=parse(g.green);
+  const center=[green.reduce((s,p)=>s+p[0],0)/green.length,green.reduce((s,p)=>s+p[1],0)/green.length];
+  const tee=path[0], pin=path[path.length-1];
+  const phi=Math.atan2(pin[0]-tee[0],pin[1]-tee[1]);
+  HOLES.push({path,green,center,tee,phi,
+    hz:g.hz.map(s=>({t:s[0],poly:parse(s.slice(2))})),
+    tees:(g.tees||[]).map(parse), fw:g.fw?parse(g.fw):null});
+}
+function rot(h,p){const x=p[0]-h.tee[0],y=p[1]-h.tee[1],c=Math.cos(h.phi),s=Math.sin(h.phi);return [x*c-y*s,x*s+y*c]}
+function unrot(h,q){const c=Math.cos(h.phi),s=Math.sin(h.phi);return [q[0]*c+q[1]*s+h.tee[0],-q[0]*s+q[1]*c+h.tee[1]]}
+function yardsInfo(h,ball){
+  const d=dist(ball,h.center); const u=d>0.5?[(h.center[0]-ball[0])/d,(h.center[1]-ball[1])/d]:[0,1];
+  let mn=1e9,mx=-1e9; h.green.forEach(p=>{const pr=(p[0]-h.center[0])*u[0]+(p[1]-h.center[1])*u[1]; mn=Math.min(mn,pr); mx=Math.max(mx,pr)});
+  const hz=[]; const seen=new Set();
+  h.hz.forEach(z=>{
+    const key=z.poly[0].join(); if(seen.has(key)) return; seen.add(key);
+    let near=1e9,far=0,ahead=false;
+    z.poly.forEach(p=>{const dd=dist(ball,p); near=Math.min(near,dd); far=Math.max(far,dd); if((p[0]-ball[0])*u[0]+(p[1]-ball[1])*u[1]>0) ahead=true});
+    if(ahead && near < d+mx+15) hz.push({t:z.t,near:near*YD,far:far*YD});
+  });
+  hz.sort((a,b)=>a.near-b.near);
+  return {c:d*YD,f:Math.max(0,d+mn)*YD,b:(d+mx)*YD,hz:hz.slice(0,4)};
+}
+
+/* ---------- storage ---------- */
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const S={
+  rounds:LS.get("bl_rounds",{}), pending:new Set(LS.get("bl_pending",[])),
+  view:"home", hole:0, viewId:null, balls:{}, tees:LS.get("bl_tees","orange"),
+  newPlayers:[], confirm:null, sync:"local", db:null, gps:null, gpsState:"idle"
+};
+function saveLocal(){LS.set("bl_rounds",S.rounds);LS.set("bl_pending",[...S.pending])}
+const liveRounds=()=>Object.values(S.rounds).filter(r=>!r.deleted);
+const active=()=>liveRounds().find(r=>r.status==="active")||null;
+
+/* ---------- db sync ---------- */
+let syncTimer=null, flushing=false;
+function touch(r){r.updatedAt=Date.now();S.pending.add(r.id);saveLocal();clearTimeout(syncTimer);syncTimer=setTimeout(flush,1200);setSync(S.db?"wait":"local")}
+async function flush(){
+  if(!S.db||flushing) return; flushing=true;
+  try{
+    for(const id of [...S.pending]){
+      const r=S.rounds[id]; if(!r){S.pending.delete(id);continue}
+      try{await S.db.doc("rounds/"+id).set(JSON.parse(JSON.stringify(r)));S.pending.delete(id);saveLocal()}
+      catch(e){setSync("off");clearTimeout(syncTimer);syncTimer=setTimeout(flush,15000);flushing=false;return}
+    }
+    setSync("ok");
+  } finally{flushing=false}
+}
+function setSync(s){S.sync=s;const el=document.getElementById("sync");if(el)el.outerHTML=syncHTML()}
+function syncHTML(){
+  const m={ok:["ok","Saved to your account"],wait:["wait","Saving…"],off:["off","Offline, saved on phone"],local:["","Saved on this phone"]}[S.sync]||["",""];
+  return `<div class="sync" id="sync"><span class="dot ${m[0]}"></span>${m[1]}</div>`;
+}
+(async()=>{
+  try{
+    const db=window.claude&&window.claude.use?await window.claude.use("db"):null;
+    if(!db){setSync("local");return}
+    S.db=db; setSync(S.pending.size?"wait":"ok");
+    db.collection("rounds").onSnapshot(snap=>{
+      let changed=false;
+      snap.docs.forEach(d=>{const r=d.data(); if(!r) return; const loc=S.rounds[r.id];
+        if(!loc||(r.updatedAt||0)>(loc.updatedAt||0)){S.rounds[r.id]=JSON.parse(JSON.stringify(r));changed=true}});
+      Object.values(S.rounds).forEach(r=>{if(!snap.docs.find(d=>d.id===r.id)) S.pending.add(r.id)});
+      saveLocal(); if(S.pending.size) flush();
+      if(changed && !document.activeElement?.matches("input,textarea")) render();
+    },()=>setSync("off"));
+    flush();
+  }catch(e){setSync("local")}
+})();
+
+/* ---------- scoring helpers ---------- */
+function newRound(){
+  const id="r"+Date.now().toString(36);
+  const r={id,course:COURSE.id,tees:S.tees,date:new Date().toISOString(),status:"active",
+    players:[ME,...S.newPlayers],
+    holes:COURSE.par.map(()=>({s:null,p:null,pen:0,ts:null,o:S.newPlayers.map(()=>null)})),
+    createdAt:Date.now(),updatedAt:Date.now()};
+  S.rounds[id]=r; S.newPlayers=[]; S.hole=0; touch(r); return r;
+}
+const played=r=>r.holes.filter(h=>h.s!=null).length;
+const myTotal=r=>r.holes.reduce((a,h)=>a+(h.s||0),0);
+const parThru=r=>r.holes.reduce((a,h,i)=>a+(h.s!=null?COURSE.par[i]:0),0);
+const toPar=n=>n===0?"E":(n>0?"+"+n:"−"+Math.abs(n));
+const oTotal=(r,k)=>r.holes.reduce((a,h)=>a+(h.o[k]||0),0);
+const complete=r=>r.holes.every(h=>h.s!=null);
+function fmtDate(iso){const d=new Date(iso);return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric",year:"numeric"})}
+
+/* handicap (WHS method, unofficial) */
+function hiFrom(diffs){
+  const n=diffs.length; if(n<3) return null;
+  const last=diffs.slice(-20).slice().sort((a,b)=>a-b);
+  const t={3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
+  const [k,adj]=t[Math.min(n,20)]||[8,0];
+  const avg=last.slice(0,k).reduce((a,b)=>a+b,0)/k;
+  return Math.min(54,Math.round((avg+adj)*10)/10);
+}
+function courseHcp(hi,tees){const t=COURSE.tees[tees];if(hi==null||!t.rating)return null;return Math.round(hi*t.slope/113+(t.rating-PAR_TOTAL))}
+function strokesOn(ch,i){if(ch==null)return 0;const idx=COURSE.hcpM[i];let s=Math.floor(ch/18);if(idx<=ch%18)s++;return s}
+function handicapHistory(){
+  const done=liveRounds().filter(r=>r.status==="done"&&complete(r)&&COURSE.tees[r.tees].rating).sort((a,b)=>a.date.localeCompare(b.date));
+  const diffs=[]; const byId={};
+  done.forEach(r=>{
+    const hi=hiFrom(diffs); const ch=courseHcp(hi,r.tees); const t=COURSE.tees[r.tees];
+    const ags=r.holes.reduce((a,h,i)=>{const cap=hi==null?COURSE.par[i]+5:COURSE.par[i]+2+strokesOn(ch,i);return a+Math.min(h.s,cap)},0);
+    const d=Math.round((113/t.slope)*(ags-t.rating)*10)/10; diffs.push(d); byId[r.id]={ags,diff:d};
+  });
+  return {hi:hiFrom(diffs),byId,count:diffs.length};
+}
+function myStats(){
+  const rs=liveRounds().filter(r=>r.status==="done"&&complete(r));
+  if(!rs.length) return null;
+  const scores=rs.map(myTotal); const n=rs.length;
+  let putts=0,pr=0,three=0,pen=0,fwHit=0,fwTot=0;
+  rs.forEach(r=>{ if(r.holes.every(h=>h.p!=null)){pr++;putts+=r.holes.reduce((a,h)=>a+h.p,0)}
+    r.holes.forEach((h,i)=>{if(h.p>=3)three++;pen+=h.pen||0;if(COURSE.par[i]>3&&h.ts){fwTot++;if(h.ts==="F")fwHit++}})});
+  return {n,best:Math.min(...scores),avg:scores.reduce((a,b)=>a+b,0)/n,putts:pr?putts/pr:null,three:three/n,pen:pen/n,fw:fwTot?fwHit/fwTot:null};
+}
+function holeAvg(i){const v=liveRounds().filter(r=>r.status==="done").map(r=>r.holes[i].s).filter(x=>x!=null);return v.length?{avg:v.reduce((a,b)=>a+b,0)/v.length,n:v.length}:null}
+
+/* ---------- render ---------- */
+const $app=document.getElementById("app");
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function header(sub){
+  return `<header class="top"><div><div class="eyebrow">${esc(COURSE.place)}</div><h1>${COURSE.name}</h1>${sub?`<div class="muted" style="margin-top:4px">${sub}</div>`:""}</div>${syncHTML()}</header>`;
+}
+function render(){
+  const a=active();
+  if((S.view==="hole"||S.view==="card")&&!a&&!S.viewId) S.view="home";
+  let html="";
+  if(S.view==="home") html=homeView(a);
+  else if(S.view==="hole") html=holeView(a);
+  else if(S.view==="card") html=cardView(S.viewId?S.rounds[S.viewId]:a);
+  else if(S.view==="history") html=historyView();
+  $app.innerHTML=html;
+  const nav=[["home","Home"],["hole","Hole"],["card","Card"],["history","History"]];
+  document.getElementById("nav").innerHTML=nav.map(([k,l])=>`<button data-act="go" data-v="${k}" ${S.view===k?'aria-current="page"':""} ${(k==="hole"||k==="card")&&!a?"disabled":""}>${l}</button>`).join("");
+  if(S.view==="hole") bindMap();
+}
+
+function homeView(a){
+  const st=myStats(), hc=handicapHistory();
+  let h=header(`Par ${PAR_TOTAL} · 18 holes`);
+  if(a){
+    const n=played(a), tp=myTotal(a)-parThru(a);
+    h+=`<div class="section"><div class="panel stack">
+      <div class="spread"><div><div class="eyebrow">Round in progress</div><h2>${fmtDate(a.date)}</h2></div>
+      <div style="text-align:right"><div class="num" style="font-size:36px;font-weight:700;line-height:1">${n?myTotal(a):"–"}</div><div class="muted num">${n?toPar(tp)+" thru "+n:"not started"}</div></div></div>
+      <div class="muted">${COURSE.tees[a.tees].label} tees · ${a.players.map(esc).join(", ")}</div>
+      <button class="btn primary block" data-act="go" data-v="hole">Continue on hole ${Math.min(18,(a.holes.findIndex(x=>x.s==null)+1)||18)}</button>
+    </div></div>`;
+  } else {
+    h+=`<div class="section"><div class="eyebrow">New round</div>
+      <div class="tees">${Object.entries(COURSE.tees).map(([k,t])=>{const y=t.yards.reduce((a,b)=>a+b,0);return `<button class="teeopt" data-act="tees" data-v="${k}" aria-pressed="${S.tees===k}"><span style="font-weight:600"><span class="teechip" style="background:${t.color}"></span>${t.label}</span><span class="num" style="font-size:20px;font-weight:700">${y.toLocaleString()} yd</span><small class="muted">${t.rating?t.rating+" / "+t.slope:"no rating"}</small></button>`}).join("")}</div>
+      <div class="panel stack">
+        <div class="spread"><strong>${ME}</strong><span class="muted" style="font-size:13px">Player 1 · all stats</span></div>
+        ${S.newPlayers.map((p,i)=>`<div class="spread"><span>${esc(p)}</span><button class="chip" data-act="rmp" data-i="${i}" aria-label="Remove ${esc(p)}">Remove</button></div>`).join("")}
+        ${S.newPlayers.length<3?`<form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Add a player (score only)" autocomplete="off" maxlength="24"><button class="btn" type="submit">Add</button></form>
+        ${recentNames().length?`<div class="row">${recentNames().map(n=>`<button class="chip" data-act="addn" data-n="${esc(n)}">+ ${esc(n)}</button>`).join("")}</div>`:""}`:`<div class="note">Foursome is full.</div>`}
+      </div>
+      <button class="btn primary block" data-act="start">Tee off on hole 1</button>
+    </div>`;
+  }
+  h+=`<div class="section"><div class="spread"><div class="eyebrow">Your Brae Loch record</div></div>`;
+  if(st){
+    h+=`<div class="stats">
+      <div class="stat"><b>${st.best}</b><span>Best 18</span></div>
+      <div class="stat"><b>${st.avg.toFixed(1)}</b><span>Average</span></div>
+      <div class="stat"><b>${hc.hi!=null?hc.hi.toFixed(1):"—"}</b><span>${hc.hi!=null?"Handicap index*":"Handicap after "+(3-hc.count)+" more"}</span></div>
+      <div class="stat"><b>${st.putts!=null?st.putts.toFixed(1):"—"}</b><span>Putts / round</span></div>
+      <div class="stat"><b>${st.pen.toFixed(1)}</b><span>Penalties / round</span></div>
+      <div class="stat"><b>${st.fw!=null?Math.round(st.fw*100)+"%":"—"}</b><span>Fairways hit</span></div>
+    </div><div class="note">${st.n} round${st.n>1?"s":""} logged. *Unofficial, calculated the World Handicap System way from your rounds here.</div>`;
+  } else h+=`<div class="panel muted">Finish your first round and your best score, averages and putting stats show up here. A handicap index appears after 3 full rounds.</div>`;
+  h+=`</div>`;
+  const recent=liveRounds().filter(r=>r.status==="done").sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+  if(recent.length) h+=`<div class="section"><div class="spread"><div class="eyebrow">Recent rounds</div><button class="chip" data-act="go" data-v="history">All history</button></div>${roundList(recent)}</div>`;
+  return h;
+}
+function recentNames(){const s=new Set();liveRounds().sort((a,b)=>b.date.localeCompare(a.date)).forEach(r=>r.players.slice(1).forEach(p=>s.add(p)));return [...s].filter(n=>!S.newPlayers.includes(n)).slice(0,6)}
+function roundList(rs){
+  const hc=handicapHistory();
+  return `<div class="rlist">${rs.map(r=>{const d=hc.byId[r.id];return `<button class="ritem" data-act="open" data-id="${r.id}">
+    <div><strong>${fmtDate(r.date)}</strong></div><div class="score">${complete(r)?myTotal(r):myTotal(r)+"*"}</div>
+    <small>${COURSE.tees[r.tees].label} · ${complete(r)?toPar(myTotal(r)-PAR_TOTAL):played(r)+" holes"}${d?" · diff "+d.diff:""}${r.players.length>1?" · with "+r.players.slice(1).map((p,k)=>esc(p)+" "+(oTotal(r,k)||"–")).join(", "):""}</small></button>`}).join("")}</div>`;
+}
+
+function holeView(r){
+  const i=S.hole, H=HOLES[i], par=COURSE.par[i], t=COURSE.tees[r.tees], hd=r.holes[i];
+  const ball=S.balls[i]||H.tee;
+  const info=yardsInfo(H,ball);
+  const av=holeAvg(i);
+  const ll=toLL(H.center);
+  const gmap=`https://www.google.com/maps/@?api=1&map_action=map&center=${ll[0].toFixed(6)},${ll[1].toFixed(6)}&zoom=18&basemap=satellite`;
+  let h=`<div class="holehead">
+    <button class="nav" data-act="hole" data-d="-1" aria-label="Previous hole" ${i===0?"disabled":""}>‹</button>
+    <div class="mid"><div class="eyebrow">Hole</div><div class="holenum">${i+1}</div></div>
+    <button class="nav" data-act="hole" data-d="1" aria-label="Next hole" ${i===17?"disabled":""}>›</button></div>
+    <div class="facts" style="margin:6px 0 10px"><span>Par <b>${par}</b></span><span><b>${t.yards[i]}</b> yd</span><span>Hcp <b>${COURSE.hcpM[i]}</b></span>${av?`<span>Your avg <b>${av.avg.toFixed(1)}</b></span>`:""}</div>
+    <div class="mapwrap" id="mapwrap">${mapSVG(H,ball)}
+      <div class="yd"><div><div class="eyebrow" style="font-size:11px">To middle</div><div class="c">${Math.round(info.c)}</div></div>
+        <div class="fb"><div><span>Back</span>${Math.round(info.b)}</div><div><span>Front</span>${Math.round(info.f)}</div></div></div>
+      <div class="maptools">${S.balls[i]?`<button class="pill" data-act="resetball">Back to tee</button>`:""}<a class="pill" href="${gmap}" target="_blank" rel="noopener">Satellite + my location ↗</a></div>
+      <div class="hint">${S.balls[i]?"From your marked spot":"Tap where your ball is"}</div>
+    </div>
+    ${info.hz.length?`<div class="hz" style="margin-top:8px">${info.hz.map(z=>`<span><i style="background:${z.t==="w"?"var(--water)":"var(--sand)"}"></i>${z.t==="w"?"Water":"Bunker"} <b class="num">${Math.round(z.near)}</b> to reach · <b class="num">${Math.round(z.far)}</b> to carry</span>`).join("")}</div>`:""}
+    <div class="section" style="margin-top:14px"><div class="entry">
+      <div class="erow me"><div class="lbl">${ME}<small>Strokes</small></div>${stepper("s",hd.s,par)}</div>
+      <div class="erow"><div class="lbl">Putts</div>${stepper("p",hd.p,2,true)}</div>
+      <div class="erow"><div class="lbl">Penalty strokes<small>Water, OB, unplayable</small></div>${stepper("pen",hd.pen,0,true)}</div>
+      ${par>3?`<div class="seglbl">Tee shot</div><div class="seg">${TS.map(([k,l])=>`<button data-act="ts" data-v="${k}" aria-pressed="${hd.ts===k}">${l}</button>`).join("")}</div>`:`<div class="seglbl">Tee shot</div><div class="seg">${[["G","Green"],["L","Left"],["R","Right"],["S","Short"],["T","Long"]].map(([k,l])=>`<button data-act="ts" data-v="${k}" aria-pressed="${hd.ts===k}">${l}</button>`).join("")}</div>`}
+      ${r.players.slice(1).map((p,k)=>`<div class="erow"><div class="lbl">${esc(p)}<small>Score</small></div>${stepper("o"+k,hd.o[k],par,true)}</div>`).join("")}
+    </div>
+    ${i<17?`<button class="btn primary block" data-act="hole" data-d="1">Next: hole ${i+2}</button>`:`<button class="btn primary block" data-act="go" data-v="card">Review card and finish</button>`}
+    <div class="note">Fairway markers at Brae Loch measure to the middle of the green: red 100, white 150, blue 200.</div>
+    </div>`;
+  return h;
+}
+function stepper(k,v,def,sm){
+  return `<div class="stepper ${sm?"sm":""}"><button data-act="step" data-k="${k}" data-d="-1" aria-label="Minus">−</button><output class="num">${v==null?"–":v}</output><button data-act="step" data-k="${k}" data-d="1" aria-label="Plus">+</button></div>`;
+}
+function mapSVG(H,ball){
+  const pts=[...H.path,...H.green,...H.hz.flatMap(z=>z.poly),...H.tees.flat(),ball].map(p=>rot(H,p));
+  let x0=Math.min(...pts.map(p=>p[0])),x1=Math.max(...pts.map(p=>p[0])),y0=Math.min(...pts.map(p=>p[1])),y1=Math.max(...pts.map(p=>p[1]));
+  const pad=22; x0-=pad;x1+=pad;y0-=pad;y1+=pad;
+  let w=x1-x0,hgt=y1-y0; const minW=hgt*0.55; if(w<minW){const c=(x0+x1)/2;x0=c-minW/2;x1=c+minW/2;w=minW}
+  const P=p=>{const q=rot(H,p);return [q[0],-q[1]]};
+  const poly=arr=>arr.map(p=>P(p).map(n=>n.toFixed(1)).join(",")).join(" ");
+  const fs=Math.max(8,w/13);
+  const b=P(ball), c=P(H.center);
+  const mid=[(b[0]+c[0])/2,(b[1]+c[1])/2];
+  const pin=P(H.path[H.path.length-1]);
+  return `<svg id="map" viewBox="${x0.toFixed(1)} ${(-y1).toFixed(1)} ${w.toFixed(1)} ${hgt.toFixed(1)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Hole ${S.hole+1} map">
+    <rect x="${x0-500}" y="${-y1-500}" width="${w+1000}" height="${hgt+1000}" fill="var(--rough)"/>
+    <polyline points="${poly(H.path)}" fill="none" stroke="var(--fair)" stroke-width="${Math.max(24,w*0.16).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"/>
+    ${H.fw?`<polygon points="${poly(H.fw)}" fill="var(--fair)"/>`:""}
+    ${H.tees.map(t=>`<polygon points="${poly(t)}" fill="var(--fair)" stroke="var(--mapline)" stroke-opacity=".7" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join("")}
+    ${H.hz.map(z=>`<polygon points="${poly(z.poly)}" fill="${z.t==="w"?"var(--water)":"var(--sand)"}"/>`).join("")}
+    <polygon points="${poly(H.green)}" fill="var(--green)" stroke="var(--mapline)" stroke-opacity=".6" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+    <line x1="${pin[0].toFixed(1)}" y1="${pin[1].toFixed(1)}" x2="${pin[0].toFixed(1)}" y2="${(pin[1]-fs*1.6).toFixed(1)}" stroke="var(--mapline)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    <polygon points="${pin[0].toFixed(1)},${(pin[1]-fs*1.6).toFixed(1)} ${(pin[0]+fs*0.9).toFixed(1)},${(pin[1]-fs*1.3).toFixed(1)} ${pin[0].toFixed(1)},${(pin[1]-fs).toFixed(1)}" fill="var(--bad)"/>
+    <line x1="${b[0].toFixed(1)}" y1="${b[1].toFixed(1)}" x2="${c[0].toFixed(1)}" y2="${c[1].toFixed(1)}" stroke="var(--mapline)" stroke-width="2" stroke-dasharray="6 5" vector-effect="non-scaling-stroke"/>
+    <circle cx="${b[0].toFixed(1)}" cy="${b[1].toFixed(1)}" r="${(fs*0.45).toFixed(1)}" fill="#fff" stroke="#142018" stroke-width="2" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
+function bindMap(){
+  const svg=document.getElementById("map"); if(!svg) return;
+  svg.addEventListener("click",e=>{
+    const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+    const q=pt.matrixTransform(svg.getScreenCTM().inverse());
+    S.balls[S.hole]=unrot(HOLES[S.hole],[q.x,-q.y]); render();
+  });
+}
+
+function cardView(r){
+  if(!r) return header()+`<div class="section panel">No round selected.</div>`;
+  const t=COURSE.tees[r.tees]; const isActive=r.status==="active";
+  const hc=handicapHistory(); const d=hc.byId[r.id];
+  const half=(from)=>{
+    const idx=[...Array(9)].map((_,k)=>k+from);
+    const sum=(f)=>idx.reduce((a,i)=>a+(f(i)||0),0);
+    const cell=(i,v)=>`<td class="${isActive&&i===S.hole?"cur":""}">${v}</td>`;
+    const mk=(i,s)=>{if(s==null)return "";const df=s-COURSE.par[i];const c=df<=-2?"eagle":df===-1?"bird":df===1?"bog":df>=2?"dbl":"";return `<span class="mk ${c}">${s}</span>`};
+    return `<div class="cardscroll"><table class="sc">
+      <tr class="h"><th>Hole</th>${idx.map(i=>`<th>${i+1}</th>`).join("")}<th>${from?"In":"Out"}</th></tr>
+      <tr class="o"><td>${t.label}</td>${idx.map(i=>`<td>${t.yards[i]}</td>`).join("")}<td class="tot">${sum(i=>t.yards[i])}</td></tr>
+      <tr class="o"><td>Hcp</td>${idx.map(i=>`<td>${COURSE.hcpM[i]}</td>`).join("")}<td class="tot"></td></tr>
+      <tr><td>Par</td>${idx.map(i=>`<td>${COURSE.par[i]}</td>`).join("")}<td class="tot">${sum(i=>COURSE.par[i])}</td></tr>
+      <tr class="mine"><td>${ME}</td>${idx.map(i=>cell(i,mk(i,r.holes[i].s))).join("")}<td class="tot">${sum(i=>r.holes[i].s)||""}</td></tr>
+      <tr class="o"><td>Putts</td>${idx.map(i=>`<td>${r.holes[i].p??""}</td>`).join("")}<td class="tot">${sum(i=>r.holes[i].p)||""}</td></tr>
+      ${r.players.slice(1).map((p,k)=>`<tr><td>${esc(p)}</td>${idx.map(i=>`<td>${r.holes[i].o[k]??""}</td>`).join("")}<td class="tot">${sum(i=>r.holes[i].o[k])||""}</td></tr>`).join("")}
+    </table></div>`;
+  };
+  const n=played(r);
+  let h=header(`${fmtDate(r.date)} · ${t.label} tees`);
+  h+=`<div class="section"><div class="stats">
+    <div class="stat"><b>${n?myTotal(r):"–"}</b><span>${ME}${complete(r)?"":" thru "+n}</span></div>
+    <div class="stat"><b>${n?toPar(myTotal(r)-parThru(r)):"–"}</b><span>To par</span></div>
+    <div class="stat"><b>${r.holes.some(x=>x.p!=null)?r.holes.reduce((a,x)=>a+(x.p||0),0):"–"}</b><span>Putts</span></div>
+  </div>${d?`<div class="note">Handicap differential for this round: <b>${d.diff}</b> (adjusted score ${d.ags}).</div>`:""}</div>`;
+  h+=`<div class="section">${half(0)}${half(9)}</div>`;
+  if(r.players.length>1) h+=`<div class="section"><div class="rlist">${r.players.map((p,k)=>{const tot=k===0?myTotal(r):oTotal(r,k-1);return `<div class="ritem" style="cursor:default"><strong>${esc(p)}</strong><div class="score">${tot||"–"}</div><small>${tot?toPar(tot-parThru(r)):""}</small></div>`}).join("")}</div></div>`;
+  h+=`<div class="section">`;
+  if(isActive){
+    h+=complete(r)?`<button class="btn primary block" data-act="finish">Finish round and save</button>`:`<button class="btn block" data-act="finish">Finish round early (${n} of 18)</button><div class="note">Rounds with all 18 holes count toward your handicap.</div>`;
+  } else {
+    h+=`<button class="btn block" data-act="reopen">Edit this round</button>`;
+  }
+  if(S.confirm==="del"+r.id) h+=`<div class="confirm"><strong>Delete this round?</strong><span class="note">It's removed from your history and stats.</span><div class="row"><button class="btn danger" data-act="del" data-id="${r.id}">Delete round</button><button class="btn ghost" data-act="cancel">Keep it</button></div></div>`;
+  else h+=`<button class="btn ghost block" data-act="askdel" data-id="${r.id}" style="color:var(--bad)">Delete round</button>`;
+  h+=`</div>`;
+  return h;
+}
+
+function historyView(){
+  const rs=liveRounds().filter(r=>r.status==="done").sort((a,b)=>b.date.localeCompare(a.date));
+  let h=header("History");
+  const hc=handicapHistory();
+  h+=`<div class="section"><div class="stats"><div class="stat"><b>${rs.length}</b><span>Rounds</span></div><div class="stat"><b>${rs.filter(r=>complete(r)).length?Math.min(...rs.filter(complete).map(myTotal)):"—"}</b><span>Best 18</span></div><div class="stat"><b>${hc.hi!=null?hc.hi.toFixed(1):"—"}</b><span>Handicap*</span></div></div></div>`;
+  h+=`<div class="section">${rs.length?roundList(rs):`<div class="panel muted">No finished rounds yet.</div>`}</div>`;
+  if(rs.length){
+    h+=`<div class="section"><div class="eyebrow">Your average by hole</div><div class="cardscroll"><table class="sc"><tr class="h"><th>Hole</th>${COURSE.par.map((_,i)=>`<th>${i+1}</th>`).join("")}</tr><tr><td>Par</td>${COURSE.par.map(p=>`<td>${p}</td>`).join("")}</tr><tr class="mine"><td>Avg</td>${COURSE.par.map((p,i)=>{const a=holeAvg(i);return `<td style="${a&&a.avg-p>=2?"color:var(--bad)":""}">${a?a.avg.toFixed(1):""}</td>`}).join("")}</tr></table></div><div class="note">Red marks holes where you average double bogey or worse.</div></div>`;
+  }
+  h+=`<div class="section"><div class="eyebrow">Backup</div><div class="panel stack">
+    <div class="note">Rounds save to your Claude account and to this phone. For an extra copy, copy the backup text and paste it into a note or email.</div>
+    <div class="row"><button class="btn" data-act="copy">Copy backup</button><button class="btn ghost" data-act="showrestore">Restore from backup</button></div>
+    ${S.confirm==="restore"?`<textarea id="restore" placeholder="Paste backup text here"></textarea><button class="btn primary" data-act="restore">Restore rounds</button>`:""}
+    <textarea id="bk" readonly hidden></textarea>
+  </div></div>`;
+  return h;
+}
+
+/* ---------- actions ---------- */
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,1800)}
+document.addEventListener("submit",e=>{
+  if(e.target.id!=="addp") return; e.preventDefault();
+  const v=document.getElementById("pname").value.trim();
+  if(v&&S.newPlayers.length<3&&v.toLowerCase()!==ME.toLowerCase()){S.newPlayers.push(v);render();document.getElementById("pname")?.focus()}
+});
+document.addEventListener("click",async e=>{
+  const el=e.target.closest("[data-act]"); if(!el) return;
+  const act=el.dataset.act, a=active();
+  if(act==="go"){S.view=el.dataset.v; if(S.view!=="card") S.viewId=null; if(S.view==="card"&&a) S.viewId=null; S.confirm=null; if(S.view==="hole"&&a){const n=a.holes.findIndex(x=>x.s==null); if(S.hole==null) S.hole=Math.max(0,n)} render(); scrollTo(0,0)}
+  else if(act==="tees"){S.tees=el.dataset.v;LS.set("bl_tees",S.tees);render()}
+  else if(act==="rmp"){S.newPlayers.splice(+el.dataset.i,1);render()}
+  else if(act==="addn"){if(S.newPlayers.length<3)S.newPlayers.push(el.dataset.n);render()}
+  else if(act==="start"){newRound();S.balls={};S.view="hole";render();scrollTo(0,0)}
+  else if(act==="hole"){S.hole=Math.max(0,Math.min(17,S.hole+ +el.dataset.d));render();scrollTo(0,0)}
+  else if(act==="resetball"){delete S.balls[S.hole];render()}
+  else if(act==="step"&&a){
+    const hd=a.holes[S.hole], k=el.dataset.k, d=+el.dataset.d, par=COURSE.par[S.hole];
+    const get=()=>k[0]==="o"&&k!=="o"?hd.o[+k.slice(1)]:hd[k];
+    const set=v=>{if(k[0]==="o")hd.o[+k.slice(1)]=v;else hd[k]=v};
+    let v=get();
+    if(v==null){ v = k==="s"||k[0]==="o" ? (d>0?par:par-1) : (k==="p"?(d>0?2:1):0); }
+    else { v+=d; const min=k==="s"||k[0]==="o"?1:0; if(v<min){ v = (k==="pen")?0:null; } }
+    if(v!=null&&v>15) v=15;
+    set(v); touch(a); render();
+  }
+  else if(act==="ts"&&a){const hd=a.holes[S.hole];hd.ts=hd.ts===el.dataset.v?null:el.dataset.v;touch(a);render()}
+  else if(act==="finish"&&a){a.status="done";touch(a);S.viewId=a.id;S.view="card";render();toast("Round saved");scrollTo(0,0)}
+  else if(act==="open"){S.viewId=el.dataset.id;S.view="card";S.confirm=null;render();scrollTo(0,0)}
+  else if(act==="reopen"){const r=S.rounds[S.viewId]; if(a&&a.id!==r.id){toast("Finish your current round first");return} r.status="active";touch(r);S.viewId=null;S.hole=0;S.view="hole";render();scrollTo(0,0)}
+  else if(act==="askdel"){S.confirm="del"+el.dataset.id;render()}
+  else if(act==="cancel"){S.confirm=null;render()}
+  else if(act==="del"){const r=S.rounds[el.dataset.id];r.deleted=true;r.status="done";touch(r);S.confirm=null;S.viewId=null;S.view="home";render();toast("Round deleted")}
+  else if(act==="copy"){
+    const txt=JSON.stringify({app:"brae-loch-card",v:1,rounds:liveRounds()});
+    try{await navigator.clipboard.writeText(txt);toast("Backup copied")}
+    catch(err){const ta=document.getElementById("bk");ta.hidden=false;ta.value=txt;ta.select();toast("Select all and copy")}
+  }
+  else if(act==="showrestore"){S.confirm=S.confirm==="restore"?null:"restore";render()}
+  else if(act==="restore"){
+    try{const j=JSON.parse(document.getElementById("restore").value);let n=0;(j.rounds||[]).forEach(r=>{if(r&&r.id&&r.holes){const loc=S.rounds[r.id];if(!loc||(r.updatedAt||0)>(loc.updatedAt||0)){S.rounds[r.id]=r;touch(r);n++}}});S.confirm=null;render();toast(n+" round"+(n===1?"":"s")+" restored")}
+    catch(err){toast("That text isn't a valid backup")}
+  }
+});
+if(active()){const a=active();const n=a.holes.findIndex(x=>x.s==null);S.hole=n<0?17:n}
+render();
+</script>
+
+</body></html>
