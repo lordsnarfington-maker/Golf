@@ -52,7 +52,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .btn.ghost{background:transparent}
 .btn.danger{color:var(--bad);border-color:var(--bad);background:transparent}
 .btn:disabled{opacity:.45;cursor:default}
-input[type=text],textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;width:100%}
+input[type=search]{-webkit-appearance:none;appearance:none}
+input[type=text],input[type=search],textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;width:100%}
 textarea{min-height:110px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
 .saved{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -64,6 +65,18 @@ textarea{min-height:110px;font-size:13px;font-family:ui-monospace,Menlo,monospac
 .opt[aria-pressed="true"]{border-color:var(--ink);background:var(--surface-2)}
 .opt b{font-family:var(--font-d);font-size:20px;line-height:1.1}
 .opt small{color:var(--muted)}
+.cbanner{display:flex;gap:8px;overflow-x:auto;position:relative;padding:2px 2px 10px;margin-top:8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.cbanner .opt{flex:0 0 148px;scroll-snap-align:start}
+.cbanner .opt.ghost{border-style:dashed;opacity:.7}
+.cbanner .opt.ghost b{font-size:17px}
+.hbh{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;font-variant-numeric:tabular-nums}
+.hbh th,.hbh td{text-align:center;padding:5px 0;border-bottom:1px solid var(--line)}
+.hbh th:first-child,.hbh td:first-child{text-align:left;color:var(--muted);font-weight:500;width:44px}
+.hbh td.av{font-family:var(--font-d);font-weight:700;font-size:15px;border-radius:4px}
+.hbh td.gd{background:color-mix(in srgb,var(--good) 22%,transparent)}
+.hbh td.bd{background:color-mix(in srgb,var(--warn) 30%,transparent)}
+.hbh tr:last-child td{border-bottom:0}
+.trend .zr{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
 .teechip{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:6px;border:1px solid rgba(0,0,0,.25)}
 .chip{border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--surface);font-weight:500;min-height:40px}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -206,7 +219,7 @@ select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid 
      holes[i].og[k]: {p,pen,ts} extra stats for guest k (strokes stay in holes[i].o[k])
    Old rounds without `card` read their card from the built-in course.
    ========================================================= */
-const APP_VERSION="2.5";
+const APP_VERSION="2.6";
 let ME="Matt"; /* the phone owner's name; set from bl_me below */
 
 /* Built-in courses. Brae Loch tee keys stay "orange/yellow/blue" so old rounds keep working;
@@ -353,7 +366,7 @@ const S={
   tees:LS.get("bl_tees","orange"), pick:LS.get("bl_pick","brae-loch"), teePick:LS.get("bl_teepick",{}), backupAt:LS.get("bl_backup_at",0),
   view:"home", hole:0, viewId:null, newPlayers:[], blankHoles:18, blankName:"",
   more:{}, confirm:null, filter:"all",
-  sFilter:"all", sRange:"all", guestName:null, gprof:LS.get("bl_gprof",{})
+  sFilter:"all", sRange:"all", guestName:null, gprof:LS.get("bl_gprof",{}), cq:""
 };
 function saveLocal(){LS.set("bl_rounds",S.rounds);LS.set("bl_pending",[...S.pending])}
 function saveCourses(){LS.set("bl_courses",S.courses)}
@@ -498,8 +511,9 @@ function holeRowsFor(r,k){
   const c=cardOf(r);
   return r.holes.map((h,i)=>{
     const par=parOf(r,i), hcp=c.hcp?c.hcp[i]:null;
-    if(k<0) return {par,hcp,s:h.s,p:h.p,pen:h.pen||0,ts:h.ts};
-    const g=gxr(h,k); return {par,hcp,s:(h.o||[])[k],p:g.p,pen:g.pen||0,ts:g.ts};
+    const nh=r.holes.length;
+    if(k<0) return {i,nh,par,hcp,s:h.s,p:h.p,pen:h.pen||0,ts:h.ts};
+    const g=gxr(h,k); return {i,nh,par,hcp,s:(h.o||[])[k],p:g.p,pen:g.pen||0,ts:g.ts};
   }).filter(x=>x.s!=null);
 }
 function statRounds(filter,range){
@@ -527,7 +541,10 @@ function statsFor(rs,who){ /* who: null = Matt, or a guest name */
   const types={eagle:0,birdie:0,par:0,bogey:0,double:0,triple:0};
   rows.forEach(x=>{const d=x.s-x.par; types[d<=-2?"eagle":d===-1?"birdie":d===0?"par":d===1?"bogey":d===2?"double":"triple"]++});
   const full18=rounds.filter(x=>x.n===18);
-  return {holes:H, rounds, full18, over:over(rows), tp18:over(rows)*18, par, diff,
+  /* front vs back nine: only holes from 18-hole rounds, shown as average to par per 9 */
+  const fr=by(x=>x.nh===18&&x.i<9), bk=by(x=>x.nh===18&&x.i>=9);
+  const nines=fr.length>=9&&bk.length>=9?{front:over(fr)*9,back:over(bk)*9,fn:fr.length,bn:bk.length}:null;
+  return {holes:H, rounds, full18, over:over(rows), tp18:over(rows)*18, par, diff, nines,
     putts, puttHoles:pr.length, putts18:putts!=null?putts*18:null, three18:pr.length?three/pr.length*18:null, onePct:pr.length?one/pr.length:null,
     pen18:rows.reduce((s,x)=>s+x.pen,0)/H*18,
     tee4:{n:tee4.length,c:cnt(tee4,["F","L","R","S","T"])}, tee3:{n:tee3.length,c:cnt(tee3,["G","L","R","S","T"])},
@@ -544,10 +561,43 @@ function insights(st){
     if(st.fwHitOver!=null&&st.fwMissOver!=null&&st.fwMissOver-st.fwHitOver>=0.3) out.push(`Missing the fairway costs you about ${(st.fwMissOver-st.fwHitOver).toFixed(1)} strokes a hole.`)}
   if(st.three18!=null&&st.three18>=1) out.push(`About ${st.three18.toFixed(1)} three-putts a round. Lag putting is an easy place to save strokes.`);
   if(st.pen18>=1) out.push(`Penalties add about ${st.pen18.toFixed(1)} strokes a round.`);
+  if(st.nines&&st.nines.fn>=18&&Math.abs(st.nines.back-st.nines.front)>=1.5){const d=st.nines.back-st.nines.front; out.push(d>0?`Your back nine runs about ${d.toFixed(1)} strokes worse than your front. A snack and some water at the turn might help.`:`You start slow: your front nine runs about ${(-d).toFixed(1)} strokes worse than your back. A few warm-up swings or putts before you tee off could help.`)}
   return out.slice(0,5);
 }
 const toParF=v=>v==null?"–":(v>=0.05?"+":v<=-0.05?"−":"")+Math.abs(v).toFixed(1).replace(/^0\.0$/,"0");
 function hbar(label,val,max,txt,cls){const w=max>0?Math.max(2,Math.min(100,Math.abs(val)/max*100)):0;return `<div class="hb"><span>${label}</span><div class="tr"><div class="fl ${cls||""}" style="width:${w}%"></div></div><span class="v">${txt}</span></div>`}
+/* average score on each hole of one course (filtered stats). Uses the most common hole count. */
+function courseHoles(rs,who){
+  const acc=[]; let nh=0; const cnt={};
+  rs.forEach(r=>{cnt[nHoles(r)]=(cnt[nHoles(r)]||0)+1}); nh=+Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0]||0;
+  [...rs].sort((a,b)=>a.date.localeCompare(b.date)).forEach(r=>{
+    if(nHoles(r)!==nh) return; const k=who==null?-1:(r.players||[]).indexOf(who)-1; if(who!=null&&k<0) return;
+    holeRowsFor(r,k).forEach(x=>{const a=acc[x.i]||(acc[x.i]={i:x.i,sum:0,n:0,par:x.par}); a.sum+=x.s; a.n++; a.par=x.par});
+  });
+  const out=[]; for(let i=0;i<nh;i++){const a=acc[i]; out.push(a?{i,par:a.par,n:a.n,avg:a.sum/a.n}:{i,par:null,n:0,avg:null})}
+  return out.some(x=>x.n)?out:null;
+}
+function holesBlock(hs){
+  const pl=hs.filter(x=>x.n), mo=pl.reduce((s,x)=>s+x.avg-x.par,0)/pl.length; /* your usual over-par per hole here */
+  const cls=x=>x.avg==null?"":x.avg-x.par<=mo-0.5?" gd":x.avg-x.par>=mo+0.5?" bd":"";
+  const tbl=(a,lbl)=>`<table class="hbh"><tr><th>${lbl}</th>${a.map(x=>`<th>${x.i+1}</th>`).join("")}</tr><tr><td>Par</td>${a.map(x=>`<td>${x.par??"–"}</td>`).join("")}</tr><tr><td>Avg</td>${a.map(x=>`<td class="av${cls(x)}">${x.avg==null?"–":x.avg.toFixed(1)}</td>`).join("")}</tr></table>`;
+  const played=hs.filter(x=>x.n), rk=[...played].sort((a,b)=>(b.avg-b.par)-(a.avg-a.par));
+  const hard=rk.slice(0,3).map(x=>x.i+1), easy=rk.slice(-3).reverse().map(x=>x.i+1);
+  return `<div class="panel stack">${tbl(hs.slice(0,9),"Hole")}${hs.length>9?tbl(hs.slice(9),"Hole"):""}</div>
+    <div class="note">Green = at least half a stroke better than your usual hole here. Orange = half a stroke worse.${played.length>=6?` Toughest for you: holes ${hard.join(", ")}. Best: holes ${easy.join(", ")}.`:""}</div>`;
+}
+/* head-to-head margin, round by round. Above the line = you won. */
+function marginSVG(m,name){
+  if(m.length<2) return "";
+  const W=340,Hh=150,pl=30,pr=10,pt=12,pb=24; const ys=m.map(x=>(x.them-x.me)*18/x.n);
+  let hi=Math.ceil(Math.max(5,...ys.map(Math.abs))/5)*5, lo=-hi;
+  const X=i=>pl+i*(W-pl-pr)/(m.length-1), Y=v=>pt+(hi-v)*(Hh-pt-pb)/(hi-lo);
+  const grid=[hi,lo].map(v=>`<line class="ax" x1="${pl}" x2="${W-pr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text x="${pl-5}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end">${v>0?"+"+v:v}</text>`).join("")+`<line class="zr" x1="${pl}" x2="${W-pr}" y1="${Y(0)}" y2="${Y(0)}"/><text x="${pl-5}" y="${Y(0)+4}" text-anchor="end">0</text>`;
+  const d=ys.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ");
+  const dots=m.map((x,i)=>`<circle class="dt" cx="${X(i).toFixed(1)}" cy="${Y(ys[i]).toFixed(1)}" r="4.5"><title>${esc(courseName(x.r))} ${fmtDate(x.r.date)}: you ${x.me}, ${esc(name)} ${x.them}</title></circle>`).join("");
+  const dl=i=>new Date(m[i].r.date).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+  return `<svg class="trend" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Your margin against ${esc(name)} over time">${grid}<path class="ln" d="${d}"/>${dots}<text x="${pl}" y="${Hh-6}">${dl(0)}</text><text x="${W-pr}" y="${Hh-6}" text-anchor="end">${dl(m.length-1)}</text></svg>`;
+}
 function trendSVG(rounds){
   if(rounds.length<2) return "";
   const W=340,Hh=150,pl=30,pr=10,pt=12,pb=24; const ys=rounds.map(x=>x.tp18);
@@ -581,6 +631,11 @@ function statsBody(st,who){
     <div class="stat"><b>${st.best??"—"}</b><span>Best 18</span></div></div>`;
   const tr=trendSVG(st.rounds);
   if(tr) h+=`<div class="section" style="margin-top:14px"><div class="eyebrow">Score to par, round by round</div><div class="panel" style="padding:10px 8px">${tr}</div><div class="note">9-hole rounds are doubled so they compare with 18. Tap a dot for details.</div></div>`;
+  if(st.nines){const f=st.nines.front,b=st.nines.back;
+    h+=`<div class="section"><div class="eyebrow">Front nine vs back nine · average to par</div><div class="stats" style="grid-template-columns:1fr 1fr">
+      <div class="stat"><b>${toParF(f)}</b><span>Front 9 (holes 1-9)</span></div>
+      <div class="stat"><b>${toParF(b)}</b><span>Back 9 (holes 10-18)</span></div></div>
+      <div class="note">${Math.abs(f-b)<0.5?"About the same on both nines.":`Your ${f<b?"front":"back"} nine is better by ${Math.abs(f-b).toFixed(1)} strokes.`} From 18-hole rounds only.</div></div>`}
   h+=`<div class="section"><div class="eyebrow">Where the strokes go · average over par per hole</div><div class="panel stack">
     ${[3,4,5].filter(p=>st.par[p].n).map(p=>hbar(`Par ${p}s`,st.par[p].over,maxOver,toParF(st.par[p].over),overs.length>1&&st.par[p].over===worstP?"warn":"")).join("")}
     ${Object.keys(st.diff).length?`<div class="note" style="margin-top:4px">By hole difficulty</div>${Object.entries(st.diff).map(([l,d])=>hbar(l.split(" ")[0],d.over,maxOver,toParF(d.over),dovs.length>1&&d.over===worstD?"warn":"")).join("")}`:""}
@@ -607,6 +662,8 @@ function statsView(){
   const rs=statRounds(S.sFilter,S.sRange), st=statsFor(rs,null), hc=handicapHistory();
   let h=header("Stats","Your golf card",hc.hi!=null?`Handicap index ${hc.hi.toFixed(1)}*`:"");
   h+=`<div class="section">${statFilters()}</div><div class="section">${statsBody(st,null)}</div>`;
+  const hs=S.sFilter!=="all"&&st?courseHoles(rs,null):null;
+  if(hs) h+=`<div class="section"><div class="eyebrow">Hole by hole · your average score</div>${holesBlock(hs)}</div>`;
   const people=allGuestNames().map(guestStats).filter(g=>g.rounds);
   h+=`<div class="section"><div class="spread"><div class="eyebrow">You vs your playing partners</div><button class="chip" data-act="go" data-v="players">Manage</button></div>${people.length?partnerList(people):`<div class="panel muted">Add a player when you tee off and they'll show up here.</div>`}</div>`;
   if(hc.hi!=null) h+=`<div class="note">*Unofficial, worked out the World Handicap System way.</div>`;
@@ -649,6 +706,8 @@ function playerView(name){
       <div class="stat"><b>${d>0?"+":d<0?"−":""}${Math.abs(d).toFixed(1)}</b><span>You vs ${esc(name)} / 18</span></div>
       <div class="stat"><b>${net.length?`${nw}-${nl}`:"—"}</b><span>Net record</span></div></div>
       <div class="note">${d>0?`${esc(name)} beats you by about ${d.toFixed(1)} strokes a round.`:d<0?`You beat ${esc(name)} by about ${Math.abs(d).toFixed(1)} strokes a round.`:"Dead even."}${net.length?" Net uses today's handicaps on rated tees.":gh==null?` Add ${esc(name)}'s handicap below to see net scores.`:myHi==null?" Net scores show once you have a handicap (3 full rounds on rated tees).":""}</div></div>`;
+    const mg=marginSVG(m,name);
+    if(mg) h+=`<div class="section"><div class="eyebrow">Your margin, round by round</div><div class="panel" style="padding:10px 8px">${mg}</div><div class="note">Above the dotted line you beat ${esc(name)}; below it ${esc(name)} won. 9-hole rounds are doubled. Tap a dot for details.</div></div>`;
   }
   const row=(l,a,b)=>`<tr><td>${l}</td><td><b>${a}</b></td><td><b>${b}</b></td></tr>`;
   if(st&&mine){
@@ -677,6 +736,39 @@ function playerView(name){
     <button class="btn ghost" data-act="ghide">${S.guests.includes(name)?"Hide from the tee-off screen":"Show on the tee-off screen"}</button>
   </div></div>`;
   return h;
+}
+/* ---------- course picker: search + most-played banner ---------- */
+const normQ=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();
+function coursePlays(){
+  const p={}; liveRounds().forEach(r=>{if(!r.course) return; const x=p[r.course]||(p[r.course]={n:0,last:""}); x.n++; if((r.date||"")>x.last) x.last=r.date||""}); return p;
+}
+/* 0 = best match, -1 = no match. "She", "shep crook", "shepherds" all find Shepherd's Crook. */
+function courseMatch(x,q){
+  q=normQ(q); if(!q) return 1;
+  const nm=normQ(x.name), all=nm+" "+normQ(x.place), words=all.split(" "), flat=all.replace(/ /g,"");
+  if(nm.startsWith(q)||nm.replace(/ /g,"").startsWith(q.replace(/ /g,""))) return 3;
+  if(q.split(" ").every(t=>words.some(w=>w.startsWith(t)))) return 2;
+  if(q.length>=3&&flat.includes(q.replace(/ /g,""))) return 1;
+  return -1;
+}
+function courseList(q){
+  const cs=allCourses(), plays=coursePlays(), ids=Object.keys(cs);
+  return Object.values(cs).map(x=>({x,m:courseMatch(x,q),p:plays[x.id]||{n:0,last:""},o:ids.indexOf(x.id)}))
+    .filter(e=>e.m>=0)
+    .sort((a,b)=>(normQ(q)?b.m-a.m:0)||b.p.n-a.p.n||b.p.last.localeCompare(a.p.last)||a.o-b.o);
+}
+/* Placeholder for the "Search online" feature: it will look up a course by name and add its card. */
+function searchOnline(q){toast("Searching online is coming soon")}
+function courseTiles(q){
+  const c=allCourses()[S.pick]||null, list=courseList(q), qq=normQ(q);
+  let h=list.map(({x,p})=>`<button class="opt" data-act="pick" data-v="${esc(x.id)}" aria-pressed="${S.pick===x.id}"><b>${esc(x.name)}</b><small>${esc(x.place||"Saved card")} · ${x.par.length} holes</small>${p.n?`<small>Played ${p.n===1?"once":p.n+" times"}</small>`:""}</button>`).join("");
+  if(!qq||"blank card".includes(qq)||!list.length) h+=`<button class="opt" data-act="pick" data-v="__blank" aria-pressed="${!c}"><b>Blank card</b><small>Any course · set pars as you go</small></button>`;
+  if(qq) h+=`<button class="opt ghost" data-act="sonline" disabled><b>Search online</b><small>Coming soon${list.length?"":` · no saved course matches “${esc(q)}”`}</small></button>`;
+  return h;
+}
+function showPicked(){
+  const b=document.getElementById("cbanner"); if(!b) return;
+  const t=b.querySelector('[aria-pressed="true"]'); b.scrollLeft=t&&t.offsetLeft+t.offsetWidth>b.clientWidth?Math.max(0,t.offsetLeft-44):0;
 }
 function renameGuest(from,to){
   let skipped=0; const merged=allGuestNames().includes(to);
@@ -711,6 +803,7 @@ function render(){
   else if(S.view==="players") html=playersView();
   else if(S.view==="player") html=playerView(S.guestName);
   $app.innerHTML=html;
+  showPicked();
   const nav=[["home","Home"],["hole","Hole"],["card","Card"],["stats","Stats"],["history","History"]];
   document.getElementById("nav").innerHTML=nav.map(([k,l])=>`<button data-act="go" data-v="${k}" ${S.view===k?'aria-current="page"':""} ${(k==="hole"||k==="card")&&!a?"disabled":""}>${l}</button>`).join("");
 }
@@ -736,8 +829,8 @@ function homeView(a){
   } else {
     const cs=allCourses(); const c=cs[S.pick]||null;
     h+=`<div class="section"><div class="eyebrow">Where are you playing?</div>
-      <div class="opts">${Object.values(cs).map(x=>`<button class="opt" data-act="pick" data-v="${esc(x.id)}" aria-pressed="${S.pick===x.id}"><b>${esc(x.name)}</b><small>${esc(x.place||"Saved card")} · ${x.par.length} holes</small></button>`).join("")}
-      <button class="opt" data-act="pick" data-v="__blank" aria-pressed="${!c}"><b>Blank card</b><small>Any course · set pars as you go</small></button></div>`;
+      <input type="search" id="csearch" placeholder="Search courses" value="${esc(S.cq)}" autocomplete="off" enterkeyhint="go" aria-label="Search courses">
+      <div class="cbanner" id="cbanner">${courseTiles(S.cq)}</div>`;
     if(c&&c.tees&&Object.keys(c.tees).length){
       const order=c.teeOrder||Object.keys(c.tees);
       const sel=teeFor(c);
@@ -954,13 +1047,21 @@ document.addEventListener("submit",e=>{
   const v=document.getElementById("pname").value.trim();
   if(v&&S.newPlayers.length<3&&v.toLowerCase()!==ME.toLowerCase()&&!S.newPlayers.includes(v)){S.newPlayers.push(v);render();document.getElementById("pname")?.focus()}
 });
-document.addEventListener("input",e=>{if(e.target.id==="cname")S.blankName=e.target.value});
+document.addEventListener("input",e=>{
+  if(e.target.id==="cname")S.blankName=e.target.value;
+  if(e.target.id==="csearch"){S.cq=e.target.value; const b=document.getElementById("cbanner"); if(b){b.innerHTML=courseTiles(S.cq); b.scrollLeft=0}}
+});
+document.addEventListener("keydown",e=>{
+  if(e.target.id!=="csearch"||e.key!=="Enter") return; e.preventDefault();
+  const t=document.querySelector('#cbanner [data-act=pick]'); if(t&&normQ(S.cq)&&(courseList(S.cq).length||"blank card".includes(normQ(S.cq)))) t.click();
+});
 document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]"); if(!el) return;
   const act=el.dataset.act, a=active();
   if(act==="go"){S.view=el.dataset.v; S.viewId=null; S.confirm=null; if(S.view==="hole"&&a){const n=a.holes.findIndex(x=>x.s==null); S.hole=n<0?Math.min(S.hole,nHoles(a)-1):n} render(); scrollTo(0,0)}
   else if(act==="setme"){const first=!ME; if(setMyName(document.getElementById("mename").value)){render();toast(first?"Welcome, "+ME:"Name saved")}}
-  else if(act==="pick"){S.pick=el.dataset.v;LS.set("bl_pick",S.pick);render()}
+  else if(act==="pick"){S.pick=el.dataset.v;LS.set("bl_pick",S.pick);S.cq="";render()}
+  else if(act==="sonline"){searchOnline(S.cq)}
   else if(act==="tees"){S.tees=el.dataset.v;LS.set("bl_tees",S.tees);S.teePick[S.pick]=el.dataset.v;LS.set("bl_teepick",S.teePick);render()}
   else if(act==="bholes"){S.blankHoles=+el.dataset.v;render()}
   else if(act==="rmp"){S.newPlayers.splice(+el.dataset.i,1);render()}
